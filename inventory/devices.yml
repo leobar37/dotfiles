@@ -1,0 +1,36 @@
+# Inventario de dispositivos sincronizados (fuente: auditoria 2026-09-22)
+devices:
+  - name: workstation
+    hostname: leobar37-ms-7d46
+    tailscale_ip: 100.83.90.33
+    user: leobar37
+    os: Ubuntu (linux x64, i5-12400F)
+    role: canonical
+    status: ok
+  - name: vultr-dev
+    hostname: dev-santiago
+    tailscale_ip: 100.97.90.58
+    ssh_alias: vultr-dev
+    ssh: linuxuser@64.176.20.128
+    user: linuxuser
+    os: Debian 13 trixie
+    role: target-principal
+    status: drift
+  - name: mac
+    tailscale_ip: 100.123.96.35
+    ssh_alias: mac
+    user: leobar37
+    os: macOS
+    role: secundario
+    status: no-auditado
+  - name: vultr
+    ssh_alias: vultr
+    ssh: linuxuser@45.76.249.193
+    os: Ubuntu 26.04
+    role: legacy
+    status: vacio
+  - name: hetzner-elena
+    ssh_alias: hetzner-elena
+    ssh: root@5.78.230.103
+    role: desconocido
+    status: blocked-timeout

@@ -1,0 +1,9 @@
+# secretos: nunca versionar valores reales
+*.token
+broker.env
+auth.json
+*.db
+*.db-shm
+*.db-wal
+*.sqlite*
+node_modules/

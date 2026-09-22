@@ -1,0 +1,60 @@
+setupVersion: 2
+modelRoles:
+  commit: zai/glm-5.3-flash
+  plan: openai-codex/gpt-5.6-sol:low
+  advisor: openai-codex/gpt-5.6-sol:high
+  tiny: muse-code/muse-spark-1.3:high
+  default: muse-code/muse-spark-1.3:high
+  vision: openai-codex/gpt-5.6-luna:high
+  smol: zai/glm-5.3-flash:off
+  task: kimi-code/kimi-for-coding:high
+  slow: openai-codex/gpt-6-astra:low
+browser:
+  headless: true
+  cmux: false
+  relay: true
+  relayUrl: http://127.0.0.1:19224
+hideThinkingBlock: true
+dev:
+  autoqaConsent: granted
+task:
+  agentModelOverrides:
+    librarian: openai-codex/gpt-5.6-luna
+    performance-reviewer: de
+    scout: openai-codex/gpt-5.6-luna
+  disabledAgents:
+    - code-quality-reviewer
+    - designer
+    - finding-validator
+    - functional-reviewer
+    - integration-reviewer
+    - performance-reviewer
+    - plan
+    - Tester
+    - tests-reviewer
+theme:
+  dark: dark-eclipse
+  light: light-cyberpunk
+model:
+  toolCallLoopGuard:
+    enabled: false
+branchSummary:
+  enabled: true
+skills:
+  ignoredSkills:
+    - playwright-skill
+    - terminal-browser
+    - kimi-webbridge
+defaultThinkingLevel: auto
+retry:
+  fallbackChains:
+    default:
+      - muse-code/muse-spark-1.3
+symbolPreset: nerd
+generate_image:
+  enabled: true
+disabledExtensions:
+  - skill:ai-elements
+disabledProviders:
+  - baseten
+  - fireworks

@@ -1,0 +1,8 @@
+[credential]
+	helper = cache
+[credential "https://github.com"]
+	helper = 
+	helper = !/home/leobar37/.local/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/home/leobar37/.local/bin/gh auth git-credential

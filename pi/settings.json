@@ -1,0 +1,68 @@
+{
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-5.6-terra",
+  "extensions": [
+    "pi-web-access",
+    "pi-lens",
+    "pi-powerline-footer"
+  ],
+  "tools": {
+    "read": true,
+    "write": true,
+    "edit": true,
+    "bash": true,
+    "grep": true,
+    "find": true
+  },
+  "skills": [
+    "~/.agents/skills"
+  ],
+  "prompts": [
+    "~/.claude/commands/*.md",
+    "~/.claude/commands/**/*.md"
+  ],
+  "enableSkillCommands": true,
+  "subagents": {
+    "agents": {
+      "planner": {
+        "model": "deepseek/deepseek-v4-pro",
+        "description": "Especialista en planificación técnica con fases investigación/diseño/implementación/validación/integración"
+      },
+      "code-quality-reviewer": {
+        "model": "anthropic/claude-sonnet-4-20250514",
+        "description": "Revisor de calidad de código: naming, duplicación, acoplamiento, complejidad, SOLID"
+      },
+      "performance-reviewer": {
+        "model": "anthropic/claude-sonnet-4-20250514",
+        "description": "Revisor de rendimiento: memory leaks, re-renders, N+1 queries, allocations"
+      },
+      "functional-reviewer": {
+        "model": "anthropic/claude-sonnet-4-20250514",
+        "description": "Revisor funcional: flujos faltantes, validaciones, edge cases, business logic"
+      },
+      "security-reviewer": {
+        "model": "anthropic/claude-opus-4",
+        "description": "Auditor de seguridad: auth gaps, secrets, injection, OWASP"
+      },
+      "tests-reviewer": {
+        "model": "anthropic/claude-haiku-4-20250514",
+        "description": "Revisor de tests: coverage, mocks, edge cases, flaky tests"
+      },
+      "integration-reviewer": {
+        "model": "anthropic/claude-sonnet-4-20250514",
+        "description": "Revisor de integración: API contracts, frontend/backend alignment"
+      },
+      "finding-validator": {
+        "model": "anthropic/claude-sonnet-4-20250514",
+        "description": "Validador de hallazgos: double-check de findings confirmed/high"
+      }
+    }
+  },
+  "lastChangelogVersion": "0.85.1",
+  "theme": "dark",
+  "packages": [
+    "npm:@juicesharp/rpiv-todo",
+    "npm:@gotgenes/pi-subagents"
+  ],
+  "defaultThinkingLevel": "high"
+}
