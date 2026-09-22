@@ -1,4 +1,5 @@
 import { $ } from "bun";
+import type { Connection, Via } from "./inventory.ts";
 
 export interface ExecResult {
   stdout: string;
@@ -71,4 +72,37 @@ export async function rsyncTo(
 /** Crea un directorio en el remoto (mkdir -p). */
 export async function remoteMkdir(target: string, dir: string): Promise<ExecResult> {
   return sshRun(target, `mkdir -p ${JSON.stringify(dir)}`);
+}
+
+export interface RunOutcome extends ExecResult {
+  via: Via;
+  target: string;
+}
+
+/**
+ * Prueba conexiones en orden (tailscale → alias → public).
+ * Solo reintenta con exit 255 (fallo de transporte SSH); si el comando
+ * corrió y falló por sí mismo, devuelve ese resultado sin reintentar.
+ */
+export async function sshRunFallback(
+  conns: Connection[],
+  script: string,
+  opts: SshOptions = {},
+): Promise<RunOutcome> {
+  const failures: string[] = [];
+  for (const c of conns) {
+    const r = await sshRun(c.target, script, opts);
+    if (r.exitCode === 0 || r.exitCode !== 255) return { ...r, via: c.via, target: c.target };
+    failures.push(`${c.via}(${c.label}): ${r.stderr.trim().split("\n").pop() ?? "ssh 255"}`);
+  }
+  throw new Error(`Sin conexión [${conns.map((c) => c.via).join("/")}] — ${failures.join(" | ")}`);
+}
+
+/** Primer transporte que responde `true`. Para rsync, que no reintenta solo. */
+export async function pickConnection(conns: Connection[], opts: SshOptions = {}): Promise<Connection> {
+  for (const c of conns) {
+    const r = await sshRun(c.target, "true", { ...opts, timeout: opts.timeout ?? 5 });
+    if (r.exitCode === 0) return c;
+  }
+  throw new Error(`Ningún transporte responde: ${conns.map((c) => `${c.via}:${c.label}`).join(", ")}`);
 }

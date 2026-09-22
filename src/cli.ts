@@ -1,38 +1,86 @@
 #!/usr/bin/env bun
-/** dotfiles cli — inventory, audit, sync y exec contra los VPS del inventario. */
-import { loadDevices, resolveDevice, sshTargetOf } from "./inventory.ts";
+/** dotfiles cli — perfiles, audit, sync y exec contra los VPS del inventario. */
+import { connectionsFor, loadDevices, resolveDevice, type Via } from "./inventory.ts";
 import { MODULE_PATHS, TOOLS, auditLocal, auditRemote, syncTo } from "./modules.ts";
-import { sshRun } from "./ssh.ts";
+import { pickConnection, sshRunFallback } from "./ssh.ts";
+import { tailnetPeers } from "./tailnet.ts";
 
-const [, , cmd, ...args] = process.argv;
+const [, , cmd, ...rest] = process.argv;
+const args = [...rest];
+
+/** Extrae `--via <t|a|p>` de los args (acepta nombre completo o letra). */
+function takeVia(): Via | undefined {
+  const i = args.indexOf("--via");
+  if (i === -1) return undefined;
+  const raw = args.splice(i, 2)[1] ?? "";
+  const short: Record<string, Via> = {
+    t: "tailscale",
+    tailscale: "tailscale",
+    a: "alias",
+    alias: "alias",
+    p: "public",
+    public: "public",
+  };
+  const via = short[raw];
+  if (!via) throw new Error(`--via inválido: "${raw}" (tailscale|alias|public)`);
+  return via;
+}
 
 function help(): void {
   console.log(`uso:
-  bun src/cli.ts inventory                  lista dispositivos del inventario
-  bun src/cli.ts audit [target]             auditoría read-only (default: vultr-dev)
-  bun src/cli.ts sync <target> [modulos]    empuja configs (nvim skills opencode pi omp shell)
-  bun src/cli.ts exec <target> -- <cmd>     ejecuta comando remoto vía ssh-runner`);
+  bun src/cli.ts profiles                 perfiles + transportes + estado tailnet
+  bun src/cli.ts inventory                lista compacta de dispositivos
+  bun src/cli.ts audit [perfil] [--via T] auditoría read-only (default: vultr-dev)
+  bun src/cli.ts sync <perfil> [mods] [--via T]  empuja configs
+  bun src/cli.ts exec <perfil> [--via T] -- <cmd>  comando remoto vía ssh-runner`);
 }
 
-const STATUS_ICON: Record<string, string> = { ok: "✓", drift: "≠", missing: "~", blocked: "✕" };
+const STATUS_ICON: Record<string, string> = { ok: "✓", drift: "≠", vacio: "~", "no-auditado": "·", "blocked-timeout": "✕" };
 
 switch (cmd) {
+  case "profiles": {
+    const peers = await tailnetPeers();
+    for (const d of await loadDevices()) {
+      console.log(`${STATUS_ICON[d.status ?? ""] ?? "·"} ${d.name}  ${d.user ?? "?"}  [${d.role ?? ""}/${d.status ?? "?"}]`);
+      if (d.local) {
+        console.log(`   local · ${(d.tailscale_ip && peers[d.tailscale_ip]) ? "tailnet ok" : ""}`);
+        continue;
+      }
+      for (const c of connectionsFor(d)) {
+        const peer = d.tailscale_ip ? peers[d.tailscale_ip] : undefined;
+        const state =
+          c.via === "tailscale" ? (peer ? (peer.online ? "online" : "offline") : "desconocido") : "—";
+        console.log(`   ${c.via.padEnd(9)} ${c.target}  (${c.label})  ${state}`);
+      }
+    }
+    break;
+  }
   case "inventory": {
     for (const d of await loadDevices()) {
+      const via = d.local ? "local" : connectionsFor(d).map((c) => c.via[0]).join("/");
       console.log(
-        `${STATUS_ICON[d.status ?? ""] ?? "·"} ${d.name}  ${d.user ?? "?"}@${d.tailscale_ip ?? d.ssh ?? "?"}  ${d.os ?? ""}  [${d.role ?? ""}/${d.status ?? "?"}]`,
+        `${STATUS_ICON[d.status ?? ""] ?? "·"} ${d.name}  ${d.user ?? "?"}  via:${via}  ${d.os ?? ""}  [${d.role ?? ""}]`,
       );
     }
     break;
   }
   case "audit": {
-    const ref = args[0] ?? "vultr-dev";
-    const device = await resolveDevice(ref);
-    const target = sshTargetOf(device);
+    const via = takeVia();
+    const device = await resolveDevice(args[0] ?? "vultr-dev");
+    const conns = connectionsFor(device, via);
+    if (conns.length === 0) throw new Error(`Perfil "${device.name}" sin transportes para via=${via ?? "default"}`);
     const local = await auditLocal();
     console.log(`-- local: ${local.skills} skills, ${local.factoryBroken} factory-symlinks rotos, ${local.opencodeAgents} opencode-agents`);
+    // auditRemote usa el primer transporte; el fallback se negocia aquí:
+    let target = conns[0].target;
+    let usedVia = conns[0].via;
+    if (conns.length > 1) {
+      const picked = await pickConnection(conns);
+      target = picked.target;
+      usedVia = picked.via;
+    }
     const remote = await auditRemote(target);
-    console.log(`-- ${device.name} (${remote.host}, ${remote.user}): ${remote.skillsCount} skills`);
+    console.log(`-- ${device.name} via=${usedVia} (${remote.host}, ${remote.user}): ${remote.skillsCount} skills`);
     for (const [mod, paths] of Object.entries(MODULE_PATHS)) {
       const missing = paths.filter((p) => !remote.paths[p]);
       console.log(`   ${missing.length === 0 ? "✓" : "≠"} ${mod}${missing.length ? `: falta ${missing.join(", ")}` : ""}`);
@@ -42,22 +90,24 @@ switch (cmd) {
     break;
   }
   case "sync": {
+    const via = takeVia();
     const ref = args[0];
-    if (!ref) throw new Error("falta target: bun src/cli.ts sync <target> [modulos]");
+    if (!ref) throw new Error("falta perfil: bun src/cli.ts sync <perfil> [modulos]");
     const device = await resolveDevice(ref);
-    const target = sshTargetOf(device);
+    const picked = await pickConnection(connectionsFor(device, via));
     const modules = args[1] ? args.slice(1) : ["nvim", "skills", "opencode", "pi", "shell"];
-    console.log(`sync → ${device.name} (${target}): ${modules.join(", ")}`);
-    await syncTo(target, modules);
+    console.log(`sync → ${device.name} via=${picked.via} (${picked.target}): ${modules.join(", ")}`);
+    await syncTo(picked.target, modules);
     console.log("OK");
     break;
   }
   case "exec": {
-    const ref = args[0];
+    const via = takeVia();
     const sep = args.indexOf("--");
-    if (!ref || sep === -1) throw new Error("uso: bun src/cli.ts exec <target> -- <cmd>");
-    const device = await resolveDevice(ref);
-    const res = await sshRun(sshTargetOf(device), args.slice(sep + 1).join(" "));
+    if (!args[0] || sep === -1) throw new Error("uso: bun src/cli.ts exec <perfil> -- <cmd>");
+    const device = await resolveDevice(args[0]);
+    const res = await sshRunFallback(connectionsFor(device, via), args.slice(sep + 1).join(" "));
+    console.log(`-- via=${res.via} (${res.target})`);
     process.stdout.write(res.stdout);
     process.stderr.write(res.stderr);
     process.exit(res.exitCode);

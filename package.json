@@ -6,6 +6,7 @@
   "description": "Canonical configs + inventory + ssh-runner para sincronizar workstation y VPS",
   "scripts": {
     "cli": "bun src/cli.ts",
+    "profiles": "bun src/cli.ts profiles",
     "inventory": "bun src/cli.ts inventory",
     "audit": "bun src/cli.ts audit",
     "sync": "bun src/cli.ts sync",

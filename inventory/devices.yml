@@ -1,8 +1,12 @@
-# Inventario de dispositivos sincronizados (fuente: auditoria 2026-09-22)
+# Perfiles de dispositivos. Transporte base: Tailscale (VPN).
+# Orden default por perfil: tailscale → ssh_alias → public_ip.
+# El runner prueba en orden y usa el primero que responde (exit 255 = sin conexión).
 devices:
   - name: workstation
+    local: true
     hostname: leobar37-ms-7d46
     tailscale_ip: 100.83.90.33
+    tailscale_name: leobar37-ms-7d46
     user: leobar37
     os: Ubuntu (linux x64, i5-12400F)
     role: canonical
@@ -10,14 +14,17 @@ devices:
   - name: vultr-dev
     hostname: dev-santiago
     tailscale_ip: 100.97.90.58
+    tailscale_name: dev-santiago
     ssh_alias: vultr-dev
-    ssh: linuxuser@64.176.20.128
+    public_ip: 64.176.20.128
     user: linuxuser
     os: Debian 13 trixie
     role: target-principal
     status: drift
   - name: mac
+    hostname: macbook-pro-de-elmer
     tailscale_ip: 100.123.96.35
+    tailscale_name: macbook-pro-de-elmer
     ssh_alias: mac
     user: leobar37
     os: macOS
@@ -25,12 +32,14 @@ devices:
     status: no-auditado
   - name: vultr
     ssh_alias: vultr
-    ssh: linuxuser@45.76.249.193
+    public_ip: 45.76.249.193
+    user: linuxuser
     os: Ubuntu 26.04
     role: legacy
     status: vacio
   - name: hetzner-elena
     ssh_alias: hetzner-elena
-    ssh: root@5.78.230.103
+    public_ip: 5.78.230.103
+    user: root
     role: desconocido
     status: blocked-timeout
