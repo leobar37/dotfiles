@@ -1,0 +1,20 @@
+{
+  "name": "@leobar37/dotfiles",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Canonical configs + inventory + ssh-runner para sincronizar workstation y VPS",
+  "scripts": {
+    "cli": "bun src/cli.ts",
+    "inventory": "bun src/cli.ts inventory",
+    "audit": "bun src/cli.ts audit",
+    "sync": "bun src/cli.ts sync",
+    "exec": "bun src/cli.ts exec"
+  },
+  "dependencies": {
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "bun-types": "^1.4.2"
+  }
+}
