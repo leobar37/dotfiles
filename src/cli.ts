@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 /** dotfiles cli — perfiles, audit, sync y exec contra los VPS del inventario. */
+import { MODULE_PATHS, TOOLS, auditLocal, auditRemote, buildCatalog, syncTo, writeCatalogFiles } from "./modules.ts";
 import { connectionsFor, loadDevices, resolveDevice, type Via } from "./inventory.ts";
-import { MODULE_PATHS, TOOLS, auditLocal, auditRemote, syncTo } from "./modules.ts";
+
 import { pickConnection, sshRunFallback } from "./ssh.ts";
 import { tailnetPeers } from "./tailnet.ts";
 
@@ -31,7 +32,7 @@ function help(): void {
   bun src/cli.ts profiles                 perfiles + transportes + estado tailnet
   bun src/cli.ts inventory                lista compacta de dispositivos
   bun src/cli.ts audit [perfil] [--via T] auditoría read-only (default: vultr-dev)
-  bun src/cli.ts sync <perfil|all> [mods] [--via T] [--dry-run]  empuja configs a uno o todos
+  bun src/cli.ts models                            catálogo omp→opencode/pi (escribe catalog.json)
   bun src/cli.ts exec <perfil> [--via T] -- <cmd>  comando remoto vía ssh-runner`);
 }
 
@@ -129,6 +130,25 @@ switch (cmd) {
     process.stdout.write(res.stdout);
     process.stderr.write(res.stderr);
     process.exit(res.exitCode);
+    break;
+  }
+  case "models": {
+    const c = await buildCatalog();
+    const inOpencode = new Set(c.opencode.flatMap((p) => p.models));
+    const inPi = new Set(c.pi.flatMap((p) => p.models));
+    const authed = c.omp.filter((p) => p.authenticated);
+    console.log(`OMP: ${c.omp.length} providers en caché, ${authed.length} autenticados`);
+    for (const p of authed) {
+      const where = [
+        inOpencode.has(p.provider) ? "opencode" : null,
+        inPi.has(p.provider) ? "pi" : null,
+      ].filter(Boolean);
+      console.log(`  ✓ ${p.provider}${where.length ? ` (en ${where.join(", ")})` : ""}`);
+    }
+    console.log(`opencode providers: ${c.opencode.map((p) => `${p.provider}(${p.models.length})`).join(", ")}`);
+    console.log(`pi providers: ${c.pi.map((p) => `${p.provider}(${p.models.length})`).join(", ")}`);
+    await writeCatalogFiles(c);
+    console.log("  → omp/catalog.json + pi/models.safe.json");
     break;
   }
   default:

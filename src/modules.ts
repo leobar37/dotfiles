@@ -1,4 +1,5 @@
 import { $ } from "bun";
+import { Database } from "bun:sqlite";
 import { remoteMkdir, rsyncTo, sshRun } from "./ssh.ts";
 
 export interface ModuleAudit {
@@ -102,6 +103,107 @@ export async function auditRemote(target: string): Promise<RemoteAudit> {
   return { host, user, paths, skillsCount, tools };
 }
 
+export interface ProviderEntry {
+  provider: string;
+  models: string[];
+}
+
+export interface ModelCatalog {
+  omp: { provider: string; authenticated: boolean }[];
+  opencode: ProviderEntry[];
+  pi: ProviderEntry[];
+}
+
+type JsonObj = Record<string, unknown>;
+
+function isObj(v: unknown): v is JsonObj {
+  return typeof v === "object" && v !== null;
+}
+
+function strField(o: unknown, key: string): string | undefined {
+  if (!isObj(o)) return undefined;
+  const v = o[key];
+  return typeof v === "string" ? v : undefined;
+}
+
+function modelIds(v: unknown): string[] {
+  if (!isObj(v) || !Array.isArray(v.models)) return [];
+  const ids: string[] = [];
+  for (const m of v.models) {
+    const id = strField(m, "id");
+    if (id) ids.push(id);
+  }
+  return ids;
+}
+
+/** Catálogo sin secretos: ids de providers/modelos y estado de auth. */
+export async function buildCatalog(): Promise<ModelCatalog> {
+  const home = process.env.HOME ?? "";
+  const omp: ModelCatalog["omp"] = [];
+  try {
+    const mdb = new Database(`${home}/.omp/agent/models.db`, { readonly: true });
+    const adb = new Database(`${home}/.omp/agent/agent.db`, { readonly: true });
+    const cached = mdb.query("SELECT provider_id AS id FROM model_cache ORDER BY provider_id").all() as {
+      id: string;
+    }[];
+    const rows = adb.query("SELECT provider AS id FROM auth_credentials WHERE disabled_cause IS NULL").all() as {
+      id: string;
+    }[];
+    const authed = new Set(rows.map((r) => r.id));
+    const isAuthed = (cachedId: string): boolean =>
+      authed.has(cachedId) || [...authed].some((p) => cachedId.startsWith(`${p}:`));
+    for (const r of cached) omp.push({ provider: r.id, authenticated: isAuthed(r.id) });
+    for (const p of authed) {
+      const covered = omp.some((o) => o.provider === p || o.provider.startsWith(`${p}:`));
+      if (!covered) omp.push({ provider: p, authenticated: true });
+    }
+    mdb.close();
+    adb.close();
+  } catch {
+    /* omp ausente: catálogo vacío */
+  }
+  const readJson = async (path: string): Promise<JsonObj | null> => {
+    try {
+      const parsed: unknown = JSON.parse(await Bun.file(path).text());
+      return isObj(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  };
+  const opencode: ProviderEntry[] = [];
+  const oc = await readJson(`${home}/.config/opencode/opencode.json`);
+  const ocProviders = oc && (isObj(oc.providers) ? oc.providers : isObj(oc.provider) ? oc.provider : null);
+  if (ocProviders) {
+    for (const [k, v] of Object.entries(ocProviders)) {
+      opencode.push({ provider: k, models: isObj(v) && isObj(v.models) ? Object.keys(v.models) : [] });
+    }
+  }
+  const pi: ProviderEntry[] = [];
+  const pm = await readJson(`${home}/.pi/agent/models.json`);
+  if (pm && isObj(pm.providers)) {
+    for (const [k, v] of Object.entries(pm.providers)) {
+      pi.push({ provider: k, models: modelIds(v) });
+    }
+  }
+  return { omp, opencode, pi };
+}
+
+/** Persiste catalog.json + snapshot sanitizado de pi (keys enmascaradas). */
+export async function writeCatalogFiles(c: ModelCatalog): Promise<void> {
+  const home = process.env.HOME ?? "";
+  await Bun.write(`${ROOT}/omp/catalog.json`, JSON.stringify(c, null, 2));
+  try {
+    const parsed: unknown = JSON.parse(await Bun.file(`${home}/.pi/agent/models.json`).text());
+    if (isObj(parsed) && isObj(parsed.providers)) {
+      for (const p of Object.values(parsed.providers)) {
+        if (isObj(p) && "apiKey" in p) p.apiKey = "***";
+      }
+      await Bun.write(`${ROOT}/pi/models.safe.json`, JSON.stringify(parsed, null, 2));
+    }
+  } catch {
+    /* pi ausente: sin snapshot */
+  }
+}
 export type SyncModule = keyof typeof MODULE_PATHS | "all";
 
 /** mkdir remoto, o solo log en dry-run. */
