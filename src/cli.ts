@@ -31,8 +31,16 @@ function help(): void {
   bun src/cli.ts profiles                 perfiles + transportes + estado tailnet
   bun src/cli.ts inventory                lista compacta de dispositivos
   bun src/cli.ts audit [perfil] [--via T] auditoría read-only (default: vultr-dev)
-  bun src/cli.ts sync <perfil> [mods] [--via T]  empuja configs
+  bun src/cli.ts sync <perfil|all> [mods] [--via T] [--dry-run]  empuja configs a uno o todos
   bun src/cli.ts exec <perfil> [--via T] -- <cmd>  comando remoto vía ssh-runner`);
+}
+
+/** Flag --dry-run: muestra sin transferir (rsync -n, sin mkdir). */
+function takeDry(): boolean {
+  const i = args.indexOf("--dry-run");
+  if (i === -1) return false;
+  args.splice(i, 1);
+  return true;
 }
 
 const STATUS_ICON: Record<string, string> = { ok: "✓", drift: "≠", vacio: "~", "no-auditado": "·", "blocked-timeout": "✕" };
@@ -91,14 +99,24 @@ switch (cmd) {
   }
   case "sync": {
     const via = takeVia();
+    const dry = takeDry();
     const ref = args[0];
-    if (!ref) throw new Error("falta perfil: bun src/cli.ts sync <perfil> [modulos]");
-    const device = await resolveDevice(ref);
-    const picked = await pickConnection(connectionsFor(device, via));
+    if (!ref) throw new Error("falta perfil: bun src/cli.ts sync <perfil|all> [modulos]");
     const modules = args[1] ? args.slice(1) : ["nvim", "skills", "opencode", "pi", "shell"];
-    console.log(`sync → ${device.name} via=${picked.via} (${picked.target}): ${modules.join(", ")}`);
-    await syncTo(picked.target, modules);
-    console.log("OK");
+    const targets =
+      ref === "all"
+        ? (await loadDevices()).filter((d) => !d.local && d.status !== "blocked-timeout")
+        : [await resolveDevice(ref)];
+    for (const device of targets) {
+      try {
+        const picked = await pickConnection(connectionsFor(device, via));
+        console.log(`sync → ${device.name} via=${picked.via} (${picked.target}): ${modules.join(", ")}${dry ? " [dry-run]" : ""}`);
+        await syncTo(picked.target, modules, { dry });
+        console.log(`  OK ${device.name}`);
+      } catch (e) {
+        console.log(`  FAIL ${device.name}: ${(e as Error).message}`);
+      }
+    }
     break;
   }
   case "exec": {

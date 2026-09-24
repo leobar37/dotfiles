@@ -49,6 +49,7 @@ export async function sshRun(target: string, script: string, opts: SshOptions = 
 export interface RsyncOptions {
   del?: boolean;
   excludes?: string[];
+  dry?: boolean;
 }
 
 /** Empuja una ruta local hacia el remoto con rsync. */
@@ -62,11 +63,16 @@ export async function rsyncTo(
     "rsync",
     "-av",
     ...(opts.del ? ["--delete"] : []),
+    ...(opts.dry ? ["-n"] : []),
     ...(opts.excludes?.flatMap((e) => ["--exclude", e]) ?? []),
     localSrc,
     `${target}:${remoteDest}`,
   ];
-  await $`${args}`.quiet();
+  if (opts.dry) {
+    await $`${args}`;
+  } else {
+    await $`${args}`.quiet();
+  }
 }
 
 /** Crea un directorio en el remoto (mkdir -p). */

@@ -104,32 +104,41 @@ export async function auditRemote(target: string): Promise<RemoteAudit> {
 
 export type SyncModule = keyof typeof MODULE_PATHS | "all";
 
+/** mkdir remoto, o solo log en dry-run. */
+async function ensureDir(target: string, dir: string, dry?: boolean): Promise<void> {
+  if (dry) {
+    console.log(`  (dry) mkdir ${dir} en ${target}`);
+    return;
+  }
+  await remoteMkdir(target, dir);
+}
 /** Empuja módulos locales → remoto. NUNCA sincroniza secretos. */
-export async function syncTo(target: string, modules: string[]): Promise<void> {
+export async function syncTo(target: string, modules: string[], opts: { dry?: boolean } = {}): Promise<void> {
   for (const m of modules) {
     switch (m) {
       case "nvim":
-        await remoteMkdir(target, "~/.config/nvim/lua");
-        await rsyncTo(`${ROOT}/nvim/init.lua`, target, "~/.config/nvim/init.lua");
-        await rsyncTo(`${ROOT}/nvim/lua/`, target, "~/.config/nvim/lua/");
+        await ensureDir(target, "~/.config/nvim/lua", opts.dry);
+        await rsyncTo(`${ROOT}/nvim/init.lua`, target, "~/.config/nvim/init.lua", { dry: opts.dry });
+        await rsyncTo(`${ROOT}/nvim/lua/`, target, "~/.config/nvim/lua/", { dry: opts.dry });
         break;
       case "skills":
         // canon: skills/ del repo (versionado). Meta local no se empuja.
-        await remoteMkdir(target, "~/.agents/skills");
+        await ensureDir(target, "~/.agents/skills", opts.dry);
         await rsyncTo(`${ROOT}/skills/`, target, "~/.agents/skills/", {
           del: true,
+          dry: opts.dry,
           excludes: [".skill-lock.json", "canonical-list.txt"],
         });
         break;
       case "opencode":
-        await remoteMkdir(target, "~/.config/opencode");
-        await rsyncTo(`${ROOT}/opencode/agents/`, target, "~/.config/opencode/agents/");
-        await rsyncTo(`${ROOT}/opencode/commands/`, target, "~/.config/opencode/commands/");
+        await ensureDir(target, "~/.config/opencode", opts.dry);
+        await rsyncTo(`${ROOT}/opencode/agents/`, target, "~/.config/opencode/agents/", { dry: opts.dry });
+        await rsyncTo(`${ROOT}/opencode/commands/`, target, "~/.config/opencode/commands/", { dry: opts.dry });
         console.log("  (opencode.json NO se copia: revisar opencode.json.safe a mano)");
         break;
       case "pi":
-        await remoteMkdir(target, "~/.pi/agent");
-        await rsyncTo(`${ROOT}/pi/settings.json`, target, "~/.pi/agent/settings.json");
+        await ensureDir(target, "~/.pi/agent", opts.dry);
+        await rsyncTo(`${ROOT}/pi/settings.json`, target, "~/.pi/agent/settings.json", { dry: opts.dry });
         console.log("  (auth.json NUNCA se sincroniza: re-autenticar en el VPS)");
         break;
       case "omp":
@@ -139,7 +148,7 @@ export async function syncTo(target: string, modules: string[]): Promise<void> {
         );
         break;
       case "shell":
-        await rsyncTo(`${ROOT}/shell/.zshenv`, target, "~/.zshenv");
+        await rsyncTo(`${ROOT}/shell/.zshenv`, target, "~/.zshenv", { dry: opts.dry });
         console.log("  (.zshrc/.bashrc solo como .safe: aplicar a mano si se desea)");
         break;
       default:
