@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "report": "<scope>-<topic>-report",
+  "reportFile": "reports/<scope>-<topic>-report.md",
+  "generatedAt": "<ISO timestamp>",
+  "branch": "<git-branch-or-unknown>",
+  "repoPath": "<absolute-repo-path>",
+  "audience": "<admin | operator | staff | engineer | mixed>",
+  "type": "<assistant | feature | audit | investigation | infra>",
+  "scope": ["<folder-or-file>", "<folder-or-file>"],
+  "subagentsUsed": ["functional", "data", "security", "ui", "integration"],
+  "commandsRun": ["git status", "git log -1"],
+  "notRun": [],
+  "capabilities": [
+    {
+      "id": "C-001",
+      "title": "<short capability title>",
+      "kind": "read",
+      "subcommand": "<tool / prompt name>",
+      "files": ["<path:line>"],
+      "confidence": "confirmed",
+      "evidence": "<file line, prompt header, or runtime>",
+      "guardrail": "none | explicit-confirmation | role-gate | dry-run | quota",
+      "userImpact": "<who is affected and how>"
+    },
+    {
+      "id": "C-002",
+      "title": "<short capability title>",
+      "kind": "write",
+      "subcommand": "<tool / prompt name>",
+      "files": ["<path:line>"],
+      "confidence": "likely",
+      "evidence": "<file line or runtime>",
+      "guardrail": "explicit-confirmation",
+      "userImpact": "<who is affected and how>"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F-001",
+      "title": "<short finding title>",
+      "category": "security",
+      "severity": "critical",
+      "confidence": "confirmed",
+      "effort": "quick",
+      "fixType": "bugfix",
+      "files": ["path/to/file.ts:42"],
+      "status": "pending",
+      "owner": "subagent",
+      "dependencies": [],
+      "validation": ["<test, typecheck, route probe, or manual check>"]
+    },
+    {
+      "id": "F-002",
+      "title": "<short finding title>",
+      "category": "performance",
+      "severity": "medium",
+      "confidence": "likely",
+      "effort": "medium",
+      "fixType": "performance",
+      "files": ["path/to/component.tsx"],
+      "status": "pending",
+      "owner": "user-decision",
+      "dependencies": ["F-001"],
+      "validation": ["<measurement or verification command>"]
+    }
+  ],
+  "openQuestions": [
+    "<conflict or uncertainty needing human input>"
+  ]
+}

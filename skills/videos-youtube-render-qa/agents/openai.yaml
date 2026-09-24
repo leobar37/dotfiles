@@ -1,0 +1,4 @@
+interface:
+  display_name: "Videos YouTube Render QA"
+  short_description: "QA y corrección de renders del proyecto videos-youtube."
+  default_prompt: "Use $videos-youtube-render-qa to diagnose and correct a videos-youtube render without cutting voice."

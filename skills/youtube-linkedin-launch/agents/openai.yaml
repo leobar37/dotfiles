@@ -1,0 +1,7 @@
+interface:
+  display_name: "YouTube LinkedIn Launch"
+  short_description: "Launch YouTube videos and LinkedIn posts"
+  default_prompt: "Use $youtube-linkedin-launch to optimize a YouTube video launch and draft or publish the matching LinkedIn post."
+
+policy:
+  allow_implicit_invocation: true

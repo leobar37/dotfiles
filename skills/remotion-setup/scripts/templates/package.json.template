@@ -1,0 +1,17 @@
+{
+  "name": "{{PROJECT_NAME}}",
+  "version": "1.0.0",
+  "description": "A Remotion video project",
+  "scripts": {
+    {{SCRIPTS}}
+  },
+  "repository": {},
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    {{DEPENDENCIES}}
+  },
+  "devDependencies": {
+    {{DEV_DEPENDENCIES}}
+  }
+}

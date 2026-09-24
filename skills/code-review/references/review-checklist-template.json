@@ -1,0 +1,81 @@
+{
+  "version": 2,
+  "review": "<feature-slug>-<YYYYMMDD>",
+  "reportFile": ".reviews/<feature-slug>-<YYYYMMDD>.md",
+  "generatedAt": "<ISO timestamp>",
+  "baseCommit": "<commit-or-diff-source>",
+  "scope": ["path/to/file-or-folder"],
+  "diffSize": {
+    "files": 0,
+    "linesChanged": 0
+  },
+  "techStack": "unknown",
+  "frameworkSkillUsed": null,
+  "subagentsUsed": ["functional", "code-quality", "performance", "tests", "integration"],
+  "securitySubagentUsed": false,
+  "validatorRun": false,
+  "falsePositivesRemoved": 0,
+  "findings": [
+    {
+      "id": "F-001",
+      "title": "<short finding title>",
+      "category": "functional",
+      "severity": "critical",
+      "confidence": "confirmed",
+      "effort": "quick",
+      "fixType": "bugfix",
+      "files": ["path/to/file.ts:42"],
+      "status": "pending",
+      "owner": "subagent",
+      "dependencies": [],
+      "evidence": "<exact line, diff hunk, or test result>",
+      "reproductionSteps": "<exact steps to trigger>",
+      "recommendation": "<concrete fix>",
+      "validation": ["<test, typecheck, route probe, profiler, or manual check>"],
+      "validationCommand": "<command to verify the fix>",
+      "validated": {
+        "sentToValidator": true,
+        "verdict": "confirmed",
+        "adjustedSeverity": "critical",
+        "adjustedConfidence": "confirmed",
+        "validatorReason": "<why confirmed/downgraded/false-positive>"
+      }
+    },
+    {
+      "id": "F-002",
+      "title": "<short finding title>",
+      "category": "performance",
+      "severity": "medium",
+      "confidence": "likely",
+      "effort": "medium",
+      "fixType": "performance",
+      "files": ["path/to/component.tsx"],
+      "status": "pending",
+      "owner": "user-decision",
+      "dependencies": ["F-001"],
+      "evidence": "<exact line or pattern>",
+      "reproductionSteps": "<scenario that triggers the issue>",
+      "recommendation": "<concrete fix>",
+      "validation": ["<measurement or verification command>"],
+      "validationCommand": "<command to verify the fix>",
+      "validated": {
+        "sentToValidator": false,
+        "verdict": null,
+        "adjustedSeverity": null,
+        "adjustedConfidence": null,
+        "validatorReason": null
+      }
+    }
+  ],
+  "validationGuide": [
+    {
+      "findingId": "F-001",
+      "command": "<test/typecheck/lint command>",
+      "expectedResult": "<expected output>"
+    }
+  ],
+  "rollbackPlan": {
+    "strategy": "Revert specific file on test failure, report to orchestrator, do not continue",
+    "commands": ["git checkout -- <file>"]
+  }
+}

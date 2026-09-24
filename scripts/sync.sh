@@ -15,8 +15,8 @@ for m in $MODULES; do case "$m" in
     ;;
   skills)
     ssh "$TARGET" 'mkdir -p ~/.agents/skills'
-    # canon: ~/.agents/skills de la workstation (fuente viva, no el repo)
-    rsync -av --delete ~/.agents/skills/ "$TARGET:~/.agents/skills/"
+    # canon: skills/ del repo (versionado); meta local no se empuja
+    rsync -av --delete --exclude '.skill-lock.json' --exclude 'canonical-list.txt' "$ROOT/skills/" "$TARGET:~/.agents/skills/"
     ;;
   opencode)
     ssh "$TARGET" 'mkdir -p ~/.config/opencode'

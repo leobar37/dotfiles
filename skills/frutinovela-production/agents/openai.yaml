@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frutinovela Production"
+  short_description: "Vertical AI fruit soap opera pipeline"
+  default_prompt: "Create a supervised vertical frutinovela project with fruit characters, voice previews, fal prompts, and Remotion scene renders."

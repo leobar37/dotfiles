@@ -114,10 +114,11 @@ export async function syncTo(target: string, modules: string[]): Promise<void> {
         await rsyncTo(`${ROOT}/nvim/lua/`, target, "~/.config/nvim/lua/");
         break;
       case "skills":
-        // canon vivo: ~/.agents/skills de la workstation
+        // canon: skills/ del repo (versionado). Meta local no se empuja.
         await remoteMkdir(target, "~/.agents/skills");
-        await rsyncTo(`${process.env.HOME}/.agents/skills/`, target, "~/.agents/skills/", {
+        await rsyncTo(`${ROOT}/skills/`, target, "~/.agents/skills/", {
           del: true,
+          excludes: [".skill-lock.json", "canonical-list.txt"],
         });
         break;
       case "opencode":

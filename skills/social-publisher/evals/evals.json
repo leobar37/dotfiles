@@ -1,0 +1,49 @@
+{
+  "skill_name": "social-publisher",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Publica este carrusel de seis imágenes 1080x1350 en Instagram y trackéalo al terminar.",
+      "expected_output": "Ejecuta primero el preflight local, abre una publicación de carrusel en 4:5, comprueba los seis slides en el composer y solicita confirmación explícita justo antes de Compartir. Solo trackea después de revisar la URL pública completa.",
+      "files": [],
+      "assertions": [
+        "Ejecuta publish-carousel.ts con --check y exige 1080x1350 homogéneo.",
+        "No acepta el recorte 1:1: exige evidencia del estado 4:5 seleccionado y verifica segundo, primero y último slide.",
+        "No marca el asset como published antes de validar todos los slides en la URL pública."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "El carrusel que publicamos quedó cuadrado, el titular y el segundo slide se ven cortados. Corrígelo.",
+      "expected_output": "Diagnostica el post existente sin borrarlo, prepara un reemplazo 4:5 validado y explica que las imágenes de un carrusel publicado no se pueden sustituir. Pide aprobación explícita antes de archivar/eliminar el post defectuoso y nuevamente antes de compartir el reemplazo.",
+      "files": [],
+      "assertions": [
+        "No intenta editar las imágenes del carrusel publicado ni realiza un borrado automático.",
+        "Preserva la URL y el media ID existentes para auditoría y tracking.",
+        "Requiere preflight, revisión visual slide por slide y confirmaciones en los puntos de riesgo."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Sube estas seis imágenes al carrusel; la primera mide 1080x1350 y las otras cinco 1080x1080.",
+      "expected_output": "Bloquea la publicación antes de abrir el composer porque el lote mezcla resoluciones y ratios. Solicita regenerar todas las páginas a 1080x1350 y repetir el preflight.",
+      "files": [],
+      "assertions": [
+        "No intenta confiar en que Instagram normalice las imágenes.",
+        "Reporta la resolución esperada 1080x1350 (4:5).",
+        "No ejecuta ninguna acción de publicación o tracking."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "El video y caption de TikTok ya están listos en el editor. Publícalo.",
+      "expected_output": "Muestra la cuenta, visibilidad, video y caption finales y solicita confirmación explícita justo antes de hacer clic en Publicar. Después verifica el contenido en TikTok Studio y recién entonces actualiza tracking.",
+      "files": [],
+      "assertions": [
+        "No hace clic en Publicar antes de recibir confirmación explícita en el punto de riesgo.",
+        "Confirma cuenta y visibilidad además del caption.",
+        "No trackea como published sin verificar el contenido después de la publicación."
+      ]
+    }
+  ]
+}

@@ -34,8 +34,8 @@ no-resume-after-a-task
 onboard
 opencode-plugin-dev
 opentui
-pi-upstream-sync
 pimono
+pi-upstream-sync
 planner
 polish
 preferences

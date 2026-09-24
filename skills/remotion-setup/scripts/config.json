@@ -1,0 +1,115 @@
+{
+  "projectName": "my-remotion-project",
+  "defaultSettings": {
+    "includeThree": true,
+    "includeAudio": true,
+    "includeTailwind": true,
+    "defaultResolution": "1920x1080",
+    "defaultFPS": 30,
+    "defaultDuration": 150
+  },
+  "dependencies": {
+    "core": [
+      "remotion",
+      "@remotion/cli",
+      "react",
+      "react-dom",
+      "typescript",
+      "@types/react",
+      "@types/react-dom"
+    ],
+    "optional": {
+      "three": [
+        "@react-three/fiber",
+        "@remotion/three",
+        "three",
+        "@types/three",
+        "@react-three/drei"
+      ],
+      "audio": [
+        "@remotion/media-utils"
+      ],
+      "tailwind": [
+        "@remotion/tailwind-v4",
+        "tailwindcss"
+      ],
+      "transitions": [
+        "@remotion/transitions"
+      ],
+      "fonts": [
+        "@remotion/google-fonts"
+      ],
+      "zod": [
+        "@remotion/zod-types",
+        "zod"
+      ]
+    },
+    "dev": [
+      "@remotion/eslint-config-flat",
+      "eslint",
+      "prettier",
+      "playwright"
+    ]
+  },
+  "scripts": {
+    "dev": "remotion studio",
+    "build": "remotion bundle",
+    "lint": "eslint src && tsc",
+    "render": "remotion render",
+    "still": "remotion still",
+    "upgrade": "remotion upgrade"
+  },
+  "folderStructure": {
+    "src": {
+      "components": {
+        "base": "Reusable animated components",
+        "compositions": "Video scenes and sequences",
+        "ui": "UI components"
+      },
+      "design-system": "Colors, animations, typography",
+      "hooks": "Custom React hooks",
+      "helpers": "Utility functions",
+      "utils": "General utilities"
+    },
+    "public": "Static assets",
+    "scripts": "Build and utility scripts"
+  },
+  "presets": {
+    "minimal": {
+      "includeThree": false,
+      "includeAudio": false,
+      "includeTailwind": false,
+      "description": "Basic Remotion setup with just core dependencies"
+    },
+    "standard": {
+      "includeThree": true,
+      "includeAudio": true,
+      "includeTailwind": true,
+      "description": "Full-featured setup with 3D, audio, and styling"
+    },
+    "social-media": {
+      "includeThree": true,
+      "includeAudio": true,
+      "includeTailwind": true,
+      "defaultResolution": "1080x1080",
+      "defaultFPS": 30,
+      "description": "Optimized for square social media videos"
+    },
+    "youtube": {
+      "includeThree": true,
+      "includeAudio": true,
+      "includeTailwind": true,
+      "defaultResolution": "1920x1080",
+      "defaultFPS": 30,
+      "description": "Standard YouTube video setup"
+    },
+    "cinema": {
+      "includeThree": true,
+      "includeAudio": true,
+      "includeTailwind": true,
+      "defaultResolution": "3840x2160",
+      "defaultFPS": 60,
+      "description": "4K cinema quality setup"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+interface:
+  display_name: "LinkedIn Automation"
+  short_description: "Automatiza LinkedIn con la sesión autenticada del navegador real."
+  default_prompt: "Use $linkedin-automation to create, verify, and publish a LinkedIn post with the real browser."
+
+policy:
+  allow_implicit_invocation: true
