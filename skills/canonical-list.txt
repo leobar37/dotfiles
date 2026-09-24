@@ -1,5 +1,4 @@
 analysis-techniques
-animate
 artifact-base
 avileo-catalog
 avileo-key-routing

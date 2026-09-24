@@ -10,15 +10,6 @@
       "installedAt": "2026-02-05T19:27:23.581Z",
       "updatedAt": "2026-02-05T19:27:23.581Z"
     },
-    "animate": {
-      "source": "pbakaus/impeccable",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/pbakaus/impeccable.git",
-      "skillPath": ".claude/skills/animate/SKILL.md",
-      "skillFolderHash": "3547b42560cfd4c8d9e7e3ec3a3c6af8ff7eb856",
-      "installedAt": "2026-03-13T04:43:50.751Z",
-      "updatedAt": "2026-03-13T04:43:50.751Z"
-    },
     "colorize": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",
