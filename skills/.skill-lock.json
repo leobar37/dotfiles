@@ -1,15 +1,6 @@
 {
   "version": 3,
   "skills": {
-    "ai-sdk": {
-      "source": "vercel/ai",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/vercel/ai.git",
-      "skillPath": "skills/use-ai-sdk/SKILL.md",
-      "skillFolderHash": "d8e09e2796e2a04a9c7f7cc8c5bbab8da76a77d9",
-      "installedAt": "2026-02-05T19:27:17.598Z",
-      "updatedAt": "2026-02-28T20:40:03.159Z"
-    },
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",
@@ -18,15 +9,6 @@
       "skillFolderHash": "c2f31172b6f256272305a5e6e7228b258446899f",
       "installedAt": "2026-02-05T19:27:23.581Z",
       "updatedAt": "2026-02-05T19:27:23.581Z"
-    },
-    "ai-elements": {
-      "source": "vercel/ai-elements",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/vercel/ai-elements.git",
-      "skillPath": "skills/ai-elements/SKILL.md",
-      "skillFolderHash": "85b673815a592ad573cb9174ad77c4e84510ee4a",
-      "installedAt": "2026-02-28T16:49:52.594Z",
-      "updatedAt": "2026-02-28T16:49:52.594Z"
     },
     "animate": {
       "source": "pbakaus/impeccable",
@@ -117,15 +99,6 @@
       "skillFolderHash": "121eecacd86c0aab06aef5cd4663e80c5397cd41",
       "installedAt": "2026-05-05T17:15:56.466Z",
       "updatedAt": "2026-05-05T17:15:56.466Z"
-    },
-    "opentui": {
-      "source": "anomalyco/opentui",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/anomalyco/opentui.git",
-      "skillPath": "packages/web/src/content/SKILL.md",
-      "skillFolderHash": "9a372f63e80da9a324c01f84c9c6a91e5f63e990",
-      "installedAt": "2026-05-16T15:57:48.684Z",
-      "updatedAt": "2026-05-16T15:57:48.684Z"
     }
   },
   "dismissed": {

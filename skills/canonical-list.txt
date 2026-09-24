@@ -1,7 +1,3 @@
-agent-maker
-ai-elements
-ai-sdk
-ai-sdk-expert
 analysis-techniques
 animate
 artifact-base
@@ -33,9 +29,8 @@ linkedin-automation
 no-resume-after-a-task
 onboard
 opencode-plugin-dev
-opentui
-pimono
 pi-upstream-sync
+pimono
 planner
 polish
 preferences
@@ -48,6 +43,5 @@ social-publisher
 subagent-delegation
 terminal-browser
 videos-youtube-render-qa
-volt-agent
 web-catalog
 youtube-linkedin-launch
