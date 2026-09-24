@@ -102,7 +102,7 @@ switch (cmd) {
     const dry = takeDry();
     const ref = args[0];
     if (!ref) throw new Error("falta perfil: bun src/cli.ts sync <perfil|all> [modulos]");
-    const modules = args[1] ? args.slice(1) : ["nvim", "skills", "opencode", "pi", "shell"];
+    const modules = args[1] ? args.slice(1) : ["nvim", "skills", "opencode", "pi", "omp", "shell"];
     const targets =
       ref === "all"
         ? (await loadDevices()).filter((d) => !d.local && d.status !== "blocked-timeout")

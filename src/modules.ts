@@ -141,12 +141,19 @@ export async function syncTo(target: string, modules: string[], opts: { dry?: bo
         await rsyncTo(`${ROOT}/pi/settings.json`, target, "~/.pi/agent/settings.json", { dry: opts.dry });
         console.log("  (auth.json NUNCA se sincroniza: re-autenticar en el VPS)");
         break;
-      case "omp":
-        console.log("  omp es safe-only: aplicar omp/config.safe.yml a mano.");
-        console.log(
-          `  broker.env por stdin: cat ~/.config/omp/broker.env | ssh ${target} 'cat > ~/.config/omp/broker.env && chmod 600 ~/.config/omp/broker.env'`,
-        );
+      case "omp": {
+        // Solo prefs versionadas (config/modelos/SYSTEM). NUNCA db, tokens ni broker.env.
+        if (!opts.dry) {
+          const backup = await sshRun(target, `test -f ~/.omp/agent/config.yml && cp ~/.omp/agent/config.yml ~/.omp/agent/config.yml.bak.$(date +%Y%m%d-%H%M%S) && echo backed-up || echo no-previo`);
+          console.log(`  (omp remoto: ${backup.stdout.trim()})`);
+        }
+        await ensureDir(target, "~/.omp/agent", opts.dry);
+        await rsyncTo(`${ROOT}/omp/config.safe.yml`, target, "~/.omp/agent/config.yml", { dry: opts.dry });
+        await rsyncTo(`${ROOT}/omp/models.yml`, target, "~/.omp/agent/models.yml", { dry: opts.dry });
+        await rsyncTo(`${ROOT}/omp/SYSTEM.md`, target, "~/.omp/agent/SYSTEM.md", { dry: opts.dry });
+        console.log("  (broker.env y auth: manual por stdin, nunca via git)");
         break;
+      }
       case "shell":
         await rsyncTo(`${ROOT}/shell/.zshenv`, target, "~/.zshenv", { dry: opts.dry });
         console.log("  (.zshrc/.bashrc solo como .safe: aplicar a mano si se desea)");

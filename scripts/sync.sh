@@ -31,8 +31,13 @@ for m in $MODULES; do case "$m" in
     echo "NOTA: auth.json NUNCA se sincroniza (re-autenticar en el VPS)"
     ;;
   omp)
-    echo "OMP es safe-only: revisar omp/config.safe.yml y aplicar a mano en el VPS."
-    echo "broker.env NUNCA via git: copiar con: cat ~/.config/omp/broker.env | ssh $TARGET 'cat > ~/.config/omp/broker.env && chmod 600 ~/.config/omp/broker.env'"
+    # Solo prefs versionadas. NUNCA db, tokens ni broker.env.
+    ssh "$TARGET" 'test -f ~/.omp/agent/config.yml && cp ~/.omp/agent/config.yml ~/.omp/agent/config.yml.bak.$(date +%Y%m%d-%H%M%S) && echo backed-up || echo no-previo'
+    ssh "$TARGET" 'mkdir -p ~/.omp/agent'
+    rsync -av "$ROOT/omp/config.safe.yml" "$TARGET:~/.omp/agent/config.yml"
+    rsync -av "$ROOT/omp/models.yml" "$TARGET:~/.omp/agent/models.yml"
+    rsync -av "$ROOT/omp/SYSTEM.md" "$TARGET:~/.omp/agent/SYSTEM.md"
+    echo "NOTA: broker.env y auth manual por stdin, nunca via git"
     ;;
   shell)
     rsync -av "$ROOT/shell/.zshenv" "$TARGET:~/.zshenv"
