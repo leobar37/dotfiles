@@ -4,7 +4,7 @@
 # Módulos: nvim skills opencode pi omp shell  (default: todos menos omp/pi que son safe-only)
 set -e
 TARGET="${1:-vultr-dev}"; shift || true
-MODULES="${*:-nvim skills opencode pi omp shell}"
+MODULES="${*:-nvim skills opencode pi omp shell climier}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 echo "target=$TARGET modules=$MODULES"
 for m in $MODULES; do case "$m" in
@@ -42,6 +42,13 @@ for m in $MODULES; do case "$m" in
   shell)
     rsync -av "$ROOT/shell/.zshenv" "$TARGET:~/.zshenv"
     echo "NOTA: .zshrc/.bashrc solo como .safe en el repo; aplicar a mano si se desea"
+    ;;
+  climier)
+    ssh "$TARGET" 'mkdir -p ~/code ~/.local/bin ~/.climier ~/.climier/projects'
+    rsync -av --delete --exclude 'ui/' --exclude '.git/' --exclude 'node_modules/' ~/code/climier-stable/ "$TARGET:~/code/climier-stable/"
+    printf '#!/bin/sh\nexport PATH="$HOME/.bun/bin:$PATH"\nexec "$HOME/code/climier-stable/bin/climier.mjs" "$@"\n' | ssh "$TARGET" 'cat > ~/.local/bin/climier && chmod +x ~/.local/bin/climier'
+    rsync -av ~/.climier/projects/ "$TARGET:~/.climier/projects/"
+    echo "NOTA: estado DAG workstation manda; requiere bun remoto"
     ;;
 esac; done
 echo "OK sync $TARGET"

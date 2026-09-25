@@ -7,3 +7,9 @@ if [ -r "$HOME/.config/omp/broker.env" ]; then
   . "$HOME/.config/omp/broker.env"
   set +a
 fi
+
+# dotfiles: herramientas locales siempre en PATH (workstation + VPS)
+case ":$PATH:" in
+  *":$HOME/.bun/bin:"*) ;;
+  *) export PATH="$HOME/.bun/bin:$HOME/.local/bin:$PATH" ;;
+esac

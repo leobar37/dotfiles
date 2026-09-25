@@ -25,9 +25,10 @@ export const MODULE_PATHS: Record<string, string[]> = {
   pi: ["~/.pi/agent/settings.json"],
   omp: ["~/.omp/agent/config.yml"],
   shell: ["~/.zshenv"],
+  climier: ["~/code/climier-stable/bin/climier.mjs", "~/.local/bin/climier", "~/.climier/projects"],
 };
 
-export const TOOLS = ["git", "bun", "omp", "herdr", "gh", "zsh", "nvim"] as const;
+export const TOOLS = ["git", "bun", "omp", "herdr", "gh", "zsh", "nvim", "climier"] as const;
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
 const REMOTE_SCRIPT = `
@@ -260,8 +261,31 @@ export async function syncTo(target: string, modules: string[], opts: { dry?: bo
         await rsyncTo(`${ROOT}/shell/.zshenv`, target, "~/.zshenv", { dry: opts.dry });
         console.log("  (.zshrc/.bashrc solo como .safe: aplicar a mano si se desea)");
         break;
+      case "climier": {
+        // Tool: espejo de climier-stable sin ui/.git (el VPS lo usa, no lo desarrolla).
+        // Requiere bun en el remoto (install-tools.sh o ~/.bun ya instalado).
+        const home = process.env.HOME ?? "";
+        if (opts.dry) {
+          console.log(`  (dry) mkdirs + rsync climier-stable (sin ui/.git) → ~/code/`);
+          console.log(`  (dry) wrapper ~/.local/bin/climier + estado ~/.climier/projects`);
+          break;
+        }
+        await ensureDir(target, "~/code/climier-stable", opts.dry);
+        await ensureDir(target, "~/.local/bin", opts.dry);
+        await ensureDir(target, "~/.climier/projects", opts.dry);
+        await rsyncTo(`${home}/code/climier-stable/`, target, "~/code/climier-stable/", {
+          del: true,
+          dry: opts.dry,
+          excludes: ["ui/", ".git/", "node_modules/"],
+        });
+        const wrapper = `#!/bin/sh\nexport PATH="$HOME/.bun/bin:$PATH"\nexec "$HOME/code/climier-stable/bin/climier.mjs" "$@"\n`;
+        await sshRun(target, `cat > ~/.local/bin/climier <<'WRAP'\n${wrapper}WRAP\nchmod +x ~/.local/bin/climier`);
+        await rsyncTo(`${home}/.climier/projects/`, target, "~/.climier/projects/", { dry: opts.dry });
+        console.log("  (estado DAG: workstation manda; ediciones remotas se pisan)");
+        break;
+      }
       default:
-        throw new Error(`Módulo desconocido: ${m} (nvim|skills|opencode|pi|omp|shell)`);
+        throw new Error(`Módulo desconocido: ${m} (nvim|skills|opencode|pi|omp|shell|climier)`);
     }
     console.log(`  ✓ ${m}`);
   }
