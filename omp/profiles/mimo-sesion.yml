@@ -1,0 +1,9 @@
+# Overlay de roles para una sesión: commit liviano a mimo (barato/rápido),
+# el resto hereda tu config global. Uso:
+#   omp --config ~/code/dotfiles/omp/profiles/mimo-sesion.yml "haz X"
+# Repetible: --config puede pasarse varias veces, gana el último.
+# Nota: --config aplica al run (no sale en `config list`, que muestra lo guardado).
+setupVersion: 2
+modelRoles:
+  commit: xiaomi-token-plan-sgp/mimo-v2.6-flash:high
+  smol: xiaomi-token-plan-sgp/mimo-v2.6-flash:high

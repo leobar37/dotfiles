@@ -1,6 +1,6 @@
 ---
 name: climier
-description: Execute large plans from planner using climier as task DAG + OMP RPC sessions as workers. Use when a plan has multiple phases, dependencies, or parallel agents — climier tracks what's ready/blocked/submitted/done while OMP workers do the coding. Covers the full loop: spawn workers, monitor with background watchers, steer mid-flight, validate with gates, accept/reject. Triggers on climier, task DAG, take/submit/accept, orchestrator workers, decision gates, ready/blocked tasks, stale claim.
+description: "Execute large plans from planner using climier as task DAG + OMP RPC sessions as workers. Use when a plan has multiple phases, dependencies, or parallel agents — climier tracks what's ready/blocked/submitted/done while OMP workers do the coding. Covers the full loop: spawn workers, monitor with background watchers, steer mid-flight, validate with gates, accept/reject. Triggers on climier, task DAG, take/submit/accept, orchestrator workers, decision gates, ready/blocked tasks, stale claim."
 ---
 
 # climier — Ejecutar planes grandes con agentes coordinados
