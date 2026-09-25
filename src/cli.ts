@@ -3,7 +3,7 @@
 import { MODULE_PATHS, TOOLS, auditLocal, auditRemote, buildCatalog, syncTo, writeCatalogFiles } from "./modules.ts";
 import { connectionsFor, loadDevices, resolveDevice, type Via } from "./inventory.ts";
 
-import { pickConnection, sshRunFallback } from "./ssh.ts";
+import { pickConnection, sshRun, sshRunFallback } from "./ssh.ts";
 import { tailnetPeers } from "./tailnet.ts";
 
 const [, , cmd, ...rest] = process.argv;
@@ -32,8 +32,10 @@ function help(): void {
   bun src/cli.ts profiles                 perfiles + transportes + estado tailnet
   bun src/cli.ts inventory                lista compacta de dispositivos
   bun src/cli.ts audit [perfil] [--via T] auditoría read-only (default: vultr-dev)
-  bun src/cli.ts models                            catálogo omp→opencode/pi (escribe catalog.json)
-  bun src/cli.ts exec <perfil> [--via T] -- <cmd>  comando remoto vía ssh-runner`);
+  bun src/cli.ts sync <perfil|all> [mods] [--via T] [--dry-run]  empuja configs
+  bun src/cli.ts models                   catálogo omp→opencode/pi (escribe catalog.json)
+  bun src/cli.ts exec <perfil> [--via T] -- <cmd>  comando remoto vía ssh-runner
+  bun src/cli.ts climier [perfil|local|all] [--via T] -- [args]  DAG climier aquí o allá (default: local status)`);
 }
 
 /** Flag --dry-run: muestra sin transferir (rsync -n, sin mkdir). */
@@ -149,6 +151,55 @@ switch (cmd) {
     console.log(`pi providers: ${c.pi.map((p) => `${p.provider}(${p.models.length})`).join(", ")}`);
     await writeCatalogFiles(c);
     console.log("  → omp/catalog.json + pi/models.safe.json");
+    break;
+  }
+  case "climier": {
+    const via = takeVia();
+    const esc = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`;
+    const runLocal = async (cargs: string[]): Promise<void> => {
+      const proc = Bun.spawn(["climier", ...cargs], { stdout: "pipe", stderr: "pipe" });
+      const [out, err, code] = await Promise.all([
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+        proc.exited,
+      ]);
+      process.stdout.write(out);
+      if (code !== 0) process.stderr.write(err);
+    };
+    const sep = args.indexOf("--");
+    let ref = "local";
+    let cargs = ["status"];
+    if (sep !== -1) {
+      cargs = args.splice(sep + 1);
+      if (sep > 0) ref = args.shift() ?? "local";
+    } else if (args.length > 0) {
+      ref = args.shift() ?? "local";
+    }
+    if (ref === "local") {
+      await runLocal(cargs);
+    } else if (ref === "all") {
+      const devices = (await loadDevices()).filter((d) => !d.local && d.status !== "blocked-timeout");
+      for (const device of devices) {
+        console.log(`== ${device.name} ==`);
+        try {
+          const picked = await pickConnection(connectionsFor(device, via));
+          const script = `export PATH="$HOME/.bun/bin:$HOME/.local/bin:$PATH"\nclimier ${cargs.map(esc).join(" ")}`;
+          const res = await sshRun(picked.target, script);
+          process.stdout.write(res.stdout);
+          if (res.exitCode !== 0) process.stderr.write(res.stderr);
+        } catch (e) {
+          console.log(`  FAIL ${device.name}: ${(e as Error).message}`);
+        }
+      }
+    } else {
+      const device = await resolveDevice(ref);
+      const picked = await pickConnection(connectionsFor(device, via));
+      const script = `export PATH="$HOME/.bun/bin:$HOME/.local/bin:$PATH"\nclimier ${cargs.map(esc).join(" ")}`;
+      const res = await sshRun(picked.target, script);
+      process.stdout.write(res.stdout);
+      process.stderr.write(res.stderr);
+      process.exit(res.exitCode);
+    }
     break;
   }
   default:
