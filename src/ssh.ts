@@ -75,9 +75,10 @@ export async function rsyncTo(
   }
 }
 
-/** Crea un directorio en el remoto (mkdir -p). */
+/** Crea un directorio en el remoto (mkdir -p). Expande ~ a $HOME (entre comillas no expande). */
 export async function remoteMkdir(target: string, dir: string): Promise<ExecResult> {
-  return sshRun(target, `mkdir -p ${JSON.stringify(dir)}`);
+  const expanded = dir.startsWith("~/") ? `$HOME/${dir.slice(2)}` : dir;
+  return sshRun(target, `mkdir -p "${expanded.replace(/"/g, "")}"`);
 }
 
 export interface RunOutcome extends ExecResult {

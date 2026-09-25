@@ -1,5 +1,6 @@
 analysis-techniques
 artifact-base
+artifacts-cli
 avileo-catalog
 avileo-key-routing
 avileo-storefront
@@ -28,8 +29,9 @@ linkedin-automation
 no-resume-after-a-task
 onboard
 opencode-plugin-dev
-pi-upstream-sync
+orchestrate-session
 pimono
+pi-upstream-sync
 planner
 polish
 preferences
@@ -42,5 +44,6 @@ social-publisher
 subagent-delegation
 terminal-browser
 videos-youtube-render-qa
+wacli
 web-catalog
 youtube-linkedin-launch

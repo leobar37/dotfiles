@@ -1,0 +1,20 @@
+# Overlay de roles para ejecutar el plan extract-video-pipeline (video-maker).
+# Uso:
+#   omp --config ~/code/dotfiles/omp/profiles/video-maker-plan.yml "haz X"
+# Repetible: --config puede pasarse varias veces, gana el último.
+# Nota: --config aplica solo al run (no sale en `config list`).
+# Nota 2: para los workers OMP de climier, el modelo se fija por sesión con
+#   set_model (provider: xiaomi-token-plan-sgp, modelId: mimo-v2.6-flash|mimo-v2.6-pro)
+#   que pisa a este overlay.
+setupVersion: 2
+modelRoles:
+  # --- tareas fáciles / mecánicas: flash (barato y rápido) ---
+  commit: xiaomi-token-plan-sgp/mimo-v2.6-flash:high   # commits, chores, syncs
+  smol: xiaomi-token-plan-sgp/mimo-v2.6-flash:high     # tareas fáciles: scaffolds, specs, greps, docs
+  tiny: xiaomi-token-plan-sgp/mimo-v2.6-flash:high
+  # --- trabajo pesado del plan: pro (fases P-001..P-005, debugging, contratos) ---
+  default: xiaomi-token-plan-sgp/mimo-v2.6-pro            # modelo por defecto de la sesión
+  slow: xiaomi-token-plan-sgp/mimo-v2.6-pro               # implementación de fases, gates difíciles
+  plan: xiaomi-token-plan-sgp/mimo-v2.6-pro               # planificación/revisión de contratos
+  advisor: xiaomi-token-plan-sgp/mimo-v2.6-pro            # decisiones de arquitectura
+  # vision hereda tu config global (openai-codex/gpt-5.6-luna:high)

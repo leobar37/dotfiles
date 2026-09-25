@@ -1,0 +1,17 @@
+# Overlay de roles para una sesión de ejecución de plan.
+# Uso: omp --config ~/code/dotfiles/omp/profiles/<slug>.yml "haz X"
+# --config aplica solo al run (no sale en `config list`); repetible, gana el último.
+# IMPORTANTE: <provider>/<modelo> debe existir en ~/code/dotfiles/omp/catalog.json —
+# omp hace fuzzy match y si no existe resuelve OTRO modelo sin avisar.
+setupVersion: 2
+modelRoles:
+  # --- tareas fáciles / mecánicas: flash (barato y rápido) ---
+  commit: <provider>/<modelo-flash>:high   # commits, chores, syncs
+  smol: <provider>/<modelo-flash>:high     # scaffolds, specs, greps, docs
+  tiny: <provider>/<modelo-flash>:high
+  # --- trabajo pesado del plan: pro (fases, debugging, contratos) ---
+  default: <provider>/<modelo-pro>         # modelo por defecto de la sesión
+  slow: <provider>/<modelo-pro>            # implementación de fases
+  plan: <provider>/<modelo-pro>            # planificación/revisión
+  advisor: <provider>/<modelo-pro>         # decisiones de arquitectura
+  # vision hereda la config global salvo que se necesite fijar
