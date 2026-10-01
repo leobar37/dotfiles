@@ -1,0 +1,9 @@
+setupVersion: 2
+modelRoles:
+  commit: zai/glm-5.3-flash:high
+  smol: zai/glm-5.3-flash:high
+  tiny: zai/glm-5.3-flash:high
+  default: zai/glm-5.3:high
+  slow: zai/glm-5.3:high
+  plan: zai/glm-5.3:high
+  advisor: zai/glm-5.3:high
