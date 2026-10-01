@@ -8,3 +8,6 @@ auth.json
 *.sqlite*
 node_modules/
 docs/artifacts/
+
+# config local con apiKey embebida
+opencode/opencode.json
