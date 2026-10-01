@@ -13,6 +13,7 @@
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { closeSync, openSync, writeSync } from "node:fs";
+import { hostname } from "node:os";
 const HERDR_BIN = "herdr";
 const CLI_TIMEOUT_MS = 3000;
 
@@ -27,9 +28,11 @@ interface HerdrPane {
 }
 
 export interface PositionPayload {
+  env: "herdr" | "ssh" | "local";
   pane_id: string;
   workspace_id: string;
   tab_id: string;
+  host: string;
   cwd: string;
   agent: string;
   session_file: string;
@@ -123,41 +126,60 @@ function parsePaneCurrent(stdout: string): HerdrPane | null {
   };
 }
 
-/** Identidad desde env (siempre inyectada por herdr); cwd/agente desde el CLI. */
-export async function currentPosition(): Promise<PositionPayload | null> {
-  const paneId = process.env.HERDR_PANE_ID;
-  if (!paneId) return null;
-  const fallback: PositionPayload = {
+/**
+ * Identidad del entorno: pane de herdr (env inyectado), sesión ssh remota
+ * (SSH_CONNECTION/SSH_TTY) o shell local. cwd/agente desde el CLI de herdr
+ * cuando aplica; si no, process.cwd().
+ */
+export async function currentPosition(): Promise<PositionPayload> {
+  const paneId = process.env.HERDR_PANE_ID ?? "";
+  const inHerdr = process.env.HERDR_ENV === "1" && paneId.length > 0;
+  const base: PositionPayload = {
+    env: inHerdr
+      ? "herdr"
+      : process.env.SSH_CONNECTION || process.env.SSH_TTY
+        ? "ssh"
+        : "local",
     pane_id: paneId,
     workspace_id: process.env.HERDR_WORKSPACE_ID ?? "",
     tab_id: process.env.HERDR_TAB_ID ?? "",
+    host: hostname().split(".")[0]?.toLowerCase() ?? hostname(),
     cwd: process.cwd(),
     agent: "",
     session_file: "",
   };
+  if (!inHerdr) return base;
 
   const res = await run(HERDR_BIN, ["pane", "current", "--current"]);
   const pane = res.ok ? parsePaneCurrent(res.stdout) : null;
-  if (!pane) return fallback;
+  if (!pane) return base;
   return {
-    pane_id: pane.pane_id ?? fallback.pane_id,
-    workspace_id: pane.workspace_id ?? fallback.workspace_id,
-    tab_id: pane.tab_id ?? fallback.tab_id,
-    cwd: pane.cwd ?? pane.foreground_cwd ?? fallback.cwd,
+    ...base,
+    pane_id: pane.pane_id ?? base.pane_id,
+    workspace_id: pane.workspace_id ?? base.workspace_id,
+    tab_id: pane.tab_id ?? base.tab_id,
+    cwd: pane.cwd ?? pane.foreground_cwd ?? base.cwd,
     agent: pane.agent ?? "",
     session_file: pane.agent_session?.value ?? "",
   };
 }
 
 export const compactLine = (p: PositionPayload): string =>
-  `pane_id=${p.pane_id} cwd=${p.cwd}`;
+  [
+    `env=${p.env}`,
+    ...(p.pane_id ? [`pane_id=${p.pane_id}`] : []),
+    `host=${p.host}`,
+    `cwd=${p.cwd}`,
+  ].join(" ");
 
 export const fullJson = (p: PositionPayload): string =>
   JSON.stringify(
     {
-      pane_id: p.pane_id,
-      workspace_id: p.workspace_id,
-      tab_id: p.tab_id,
+      env: p.env,
+      ...(p.pane_id ? { pane_id: p.pane_id } : {}),
+      ...(p.workspace_id ? { workspace_id: p.workspace_id } : {}),
+      ...(p.tab_id ? { tab_id: p.tab_id } : {}),
+      host: p.host,
       cwd: p.cwd,
       ...(p.agent ? { agent: p.agent } : {}),
       ...(p.session_file ? { session_file: p.session_file } : {}),
@@ -202,20 +224,9 @@ const COMMANDS: HerdrCommand[] = [
   {
     name: "herder-position",
     description:
-      "Posición actual en herdr (pane_id + cwd); copia al portapapeles si puede. Args: [json]",
+      "Posición del entorno (herdr/ssh/local): env, pane_id, host, cwd; copia al portapapeles. Args: [json]",
     handler: async (args, ctx) => {
-      if (process.env.HERDR_ENV !== "1" || !process.env.HERDR_PANE_ID) {
-        ctx.ui.notify(
-          "No estás dentro de un pane de herdr (falta HERDR_ENV=1)",
-          "warn",
-        );
-        return;
-      }
       const pos = await currentPosition();
-      if (!pos) {
-        ctx.ui.notify("No se pudo resolver la posición del pane", "error");
-        return;
-      }
       const payload = /\bjson\b/i.test(args) ? fullJson(pos) : compactLine(pos);
       const via = await copyToClipboard(payload);
       const suffix =
