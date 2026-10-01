@@ -22,8 +22,8 @@ export const MODULE_PATHS: Record<string, string[]> = {
   nvim: ["~/.config/nvim/init.lua", "~/.config/nvim/lua"],
   skills: ["~/.agents/skills"],
   opencode: ["~/.config/opencode/opencode.json", "~/.config/opencode/agents", "~/.config/opencode/commands"],
-  pi: ["~/.pi/agent/settings.json"],
-  omp: ["~/.omp/agent/config.yml"],
+  pi: ["~/.pi/agent/settings.json", "~/.pi/agent/extensions/herdr-tools.ts"],
+  omp: ["~/.omp/agent/config.yml", "~/.omp/agent/extensions/herdr-tools.ts"],
   shell: ["~/.zshenv", "~/.zshrc"],
   climier: ["~/code/climier-stable/bin/climier.mjs", "~/.local/bin/climier", "~/.climier/projects"],
 };
@@ -256,6 +256,9 @@ export async function syncTo(target: string, modules: string[], opts: { dry?: bo
           );
           console.log(`  (pi remoto: ${guard.stdout.trim()})`);
         }
+        // Extensiones compartidas pi/omp (misma API): fuente única en omp/extensions.
+        await ensureDir(target, "~/.pi/agent/extensions", opts.dry);
+        await rsyncTo(`${ROOT}/omp/extensions/`, target, "~/.pi/agent/extensions/", { dry: opts.dry });
         console.log("  (auth.json NUNCA se sincroniza: re-autenticar en el VPS)");
         break;
       case "omp": {
@@ -268,6 +271,9 @@ export async function syncTo(target: string, modules: string[], opts: { dry?: bo
         await rsyncTo(`${ROOT}/omp/config.safe.yml`, target, "~/.omp/agent/config.yml", { dry: opts.dry });
         await rsyncTo(`${ROOT}/omp/models.yml`, target, "~/.omp/agent/models.yml", { dry: opts.dry });
         await rsyncTo(`${ROOT}/omp/SYSTEM.md`, target, "~/.omp/agent/SYSTEM.md", { dry: opts.dry });
+        // Extensiones versionadas; sin --delete para no tocar las que instala herdr.
+        await ensureDir(target, "~/.omp/agent/extensions", opts.dry);
+        await rsyncTo(`${ROOT}/omp/extensions/`, target, "~/.omp/agent/extensions/", { dry: opts.dry });
         console.log("  (broker.env y auth: manual por stdin, nunca via git)");
         break;
       }
