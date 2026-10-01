@@ -1,10 +1,12 @@
 // herdr-tools.ts — comandos de integración OMP ↔ herdr.
 //
 // Comandos:
-//   /herder-position [json]   Imprime la posición actual dentro de herdr
-//                             (pane_id + cwd, o JSON completo con `json`)
-//                             y la copia al portapapeles si hay mecanismo
-//                             disponible (xclip → wl-copy → OSC52).
+//   /herder-position [json]   Posición del entorno (env=herdr|ssh|local,
+//                             pane_id, host, cwd) copiada al portapapeles
+//                             si hay mecanismo (xclip → wl-copy → OSC52).
+//   /climer-ui                URL del tablero climier vía IP Tailscale;
+//                             si ui solo escucha loopback levanta proxy
+//                             0.0.0.0 (nunca comparte localhost).
 //
 // Para agregar comandos nuevos: sumar entradas al array COMMANDS al final.
 // Why: sin import de tipos de paquete — Pi y OMP exponen la misma API de
@@ -214,6 +216,67 @@ export async function copyToClipboard(
   }
 }
 
+const CLIMIER_DEFAULT_PORT = 8930;
+
+interface ListeningSocket {
+  port: number;
+  addr: string;
+}
+
+/** Sockets en LISTEN desde `ss -tln`: col 4 = addr:port (ipv6 queda [::]:p). */
+function parseSsListening(out: string): ListeningSocket[] {
+  const socks: ListeningSocket[] = [];
+  for (const line of out.split("\n").slice(1)) {
+    const local = line.trim().split(/\s+/)[3];
+    const m = local?.match(/^(.+):(\d+)$/);
+    if (m) socks.push({ addr: m[1]!, port: Number(m[2]) });
+  }
+  return socks;
+}
+
+const isLoopback = (addr: string): boolean =>
+  addr.startsWith("127.") || addr === "[::1]";
+
+const isExposed = (socks: ListeningSocket[], port: number): boolean =>
+  socks.some((s) => s.port === port && !isLoopback(s.addr));
+
+/** Proxy read-only 0.0.0.0:listen → 127.0.0.1:target (mismo patrón del /tmp manual). */
+const proxySource = (target: number, listen: number): string =>
+  `Bun.serve({ hostname: "0.0.0.0", port: ${listen}, async fetch(req) {` +
+  ` const url = new URL(req.url); url.hostname = "127.0.0.1"; url.port = "${target}";` +
+  ` const up = await fetch(new Request(url.toString(), req));` +
+  ` const h = new Headers(up.headers); h.set("cache-control", "no-store");` +
+  ` return new Response(up.body, { status: up.status, headers: h }); } });`;
+
+async function listeningSockets(): Promise<ListeningSocket[]> {
+  const res = await run("ss", ["-tln"]);
+  return res.ok ? parseSsListening(res.stdout) : [];
+}
+
+/**
+ * Puerto por el que climier ui es alcanzable desde otras máquinas.
+ * - Puerta ya expuesta (0.0.0.0/[::]) → ese puerto.
+ * - Solo loopback → spawn detached de proxy bun en el primer puerto libre
+ *   ≥ base+1, esperando hasta 2s a que escuche.
+ */
+export async function ensureClimierExposed(basePort: number): Promise<number | null> {
+  const initial = await listeningSockets();
+  for (const p of [basePort, basePort + 1]) {
+    if (isExposed(initial, p)) return p;
+  }
+  let listen = basePort + 1;
+  while (initial.some((s) => s.port === listen)) listen++;
+  const child = spawn("bun", ["-e", proxySource(basePort, listen)], {
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
+  for (let i = 0; i < 13; i++) {
+    await new Promise((r) => setTimeout(r, 150));
+    if (isExposed(await listeningSockets(), listen)) return listen;
+  }
+  return null;
+}
 interface HerdrCommand {
   name: string;
   description: string;
@@ -236,6 +299,55 @@ const COMMANDS: HerdrCommand[] = [
             ? "  [osc52 enviado]"
             : "";
       ctx.ui.notify(payload + suffix, "info");
+    },
+  },
+  {
+    name: "climer-ui",
+    description:
+      "URL del tablero climier ui via IP Tailscale; expone proxy 0.0.0.0 si solo escucha loopback",
+    handler: async (_args, ctx) => {
+      const proc = await run("pgrep", ["-af", "climier ui"]);
+      // El proxy embebido contiene "climier ui proxy" en su cmdline: filtrar
+      // líneas con Bun.serve para quedarnos solo con el proceso ui real.
+      const uiLines = proc.stdout
+        .split("\n")
+        .filter((l) => l.trim() && !l.includes("Bun.serve"));
+      if (!proc.ok || uiLines.length === 0) {
+        ctx.ui.notify(
+          "climier ui no está corriendo (ej: climier ui --port 8930 --open=false)",
+          "warn",
+        );
+        return;
+      }
+      const portMatch = uiLines.join(" ").match(/--port[ =](\d+)/);
+      const basePort = portMatch ? Number(portMatch[1]) : CLIMIER_DEFAULT_PORT;
+
+      const port = await ensureClimierExposed(basePort);
+      if (port === null) {
+        ctx.ui.notify(
+          "No se pudo exponer climier ui (el proxy no llegó a escuchar)",
+          "error",
+        );
+        return;
+      }
+      const ts = await run("tailscale", ["ip", "-4"]);
+      const tsip = ts.stdout.trim().split("\n")[0] ?? "";
+      if (!ts.ok || !/^\d+\.\d+\.\d+\.\d+$/.test(tsip)) {
+        ctx.ui.notify(
+          "Tailscale no disponible: sin IP no hay URL accesible desde otros dispositivos",
+          "error",
+        );
+        return;
+      }
+      const url = `http://${tsip}:${port}`;
+      const via = await copyToClipboard(url);
+      const suffix =
+        via === "clipboard"
+          ? "  [copiado]"
+          : via === "osc52"
+            ? "  [osc52 enviado]"
+            : "";
+      ctx.ui.notify(url + suffix, "info");
     },
   },
 ];
