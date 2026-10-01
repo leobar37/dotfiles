@@ -1,9 +1,9 @@
 setupVersion: 2
 modelRoles:
-  commit:  deepseek/deepseek-flash
-  smol:    deepseek/deepseek-flash
-  tiny:    deepseek/deepseek-flash
-  default: deepseek/deepseek-v4-pro
-  slow:    deepseek/deepseek-v4-pro
-  plan:    deepseek/deepseek-v4-pro
-  advisor: deepseek/deepseek-v4-pro
+  commit:  zai/glm-5.3-flash
+  smol:    zai/glm-5.3-flash
+  tiny:    zai/glm-5.3-flash
+  default: zai/glm-5.3
+  slow:    zai/glm-5.3
+  plan:    zai/glm-5.3
+  advisor: zai/glm-5.3
