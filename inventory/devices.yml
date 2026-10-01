@@ -11,16 +11,26 @@ devices:
     os: Ubuntu (linux x64, i5-12400F)
     role: canonical
     status: ok
-  - name: vultr-dev
-    hostname: dev-santiago
-    tailscale_ip: 100.97.90.58
-    tailscale_name: dev-santiago
-    ssh_alias: vultr-dev
-    public_ip: 64.176.20.128
-    user: linuxuser
-    os: Debian 13 trixie
+  - name: gcp-avileo-prod
+    hostname: avileo-prod-01
+    ssh_alias: gcp-avileo-prod
+    transport: iap-tunnel
+    project: elena-tech-prod
+    zone: southamerica-east1-a
+    user: leobar37
+    os: Ubuntu 24.04 LTS (x86_64, e2-custom-4-24576)
+    role: produccion
+    status: ok
+  - name: gdev
+    hostname: gdev-01
+    ssh_alias: gdev
+    transport: iap-tunnel
+    project: elena-tech-prod
+    zone: southamerica-east1-a
+    user: leobar37
+    os: Ubuntu 24.04 LTS (x86_64, e2-custom-4-24576)
     role: target-principal
-    status: drift
+    status: ok
   - name: mac
     hostname: macbook-pro-de-elmer
     tailscale_ip: 100.123.96.35
@@ -31,15 +41,17 @@ devices:
     role: secundario
     status: no-auditado
   - name: vultr
+    dev: false # no es máquina de desarrollo (legacy)
     ssh_alias: vultr
     public_ip: 45.76.249.193
     user: linuxuser
     os: Ubuntu 26.04
     role: legacy
-    status: vacio
+    status: decomisionado-2026-09-30
   - name: hetzner-elena
+    dev: false # no es máquina de desarrollo
     ssh_alias: hetzner-elena
     public_ip: 5.78.230.103
     user: root
     role: desconocido
-    status: blocked-timeout
+    status: decomisionado-2026-09-30

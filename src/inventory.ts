@@ -7,6 +7,8 @@ export interface Device {
   name: string;
   /** true = esta máquina; sin transportes remotos */
   local?: boolean;
+  /** false = NO es máquina de desarrollo: se excluye de audit/sync/climier con "all" */
+  dev?: boolean;
   hostname?: string;
   user?: string;
   os?: string;

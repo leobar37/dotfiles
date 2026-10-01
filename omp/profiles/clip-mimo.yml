@@ -1,0 +1,22 @@
+# Overlay full-mimo para el plan clip-vertical-remotion (video-maker).
+# Uso:
+#   OMP_PROFILE=~/code/dotfiles/omp/profiles/clip-mimo.yml \
+#   OMP_GOAL_FILE=prompts/clip-goal-objective.txt \
+#   OMP_BOOTSTRAP_FILE=prompts/clip-session-bootstrap.md \
+#   ./scripts/omp-session.sh
+# Verificado contra `omp models xiaomi-token-plan-sgp` (2026-09-29):
+# todos los ids existen, con thinking minimal/low/medium/high y contexto 1M
+# (omni 262K). Vision explícita en mimo (no hereda otro provider).
+setupVersion: 2
+modelRoles:
+  # --- tareas fáciles / mecánicas: flash (rápido y barato) ---
+  commit: xiaomi-token-plan-sgp/mimo-v2.6-flash:high   # commits, chores, syncs
+  smol: xiaomi-token-plan-sgp/mimo-v2.6-flash:high     # tareas fáciles: scaffolds, specs, greps, docs
+  tiny: xiaomi-token-plan-sgp/mimo-v2.6-flash:high
+  # --- trabajo pesado: pro (fases C-01..C-14, debugging, contratos) ---
+  default: xiaomi-token-plan-sgp/mimo-v2.6-pro          # modelo por defecto de la sesión
+  slow: xiaomi-token-plan-sgp/mimo-v2.6-pro             # implementación de fases, gates difíciles
+  plan: xiaomi-token-plan-sgp/mimo-v2.6-pro             # planificación/revisión de contratos
+  advisor: xiaomi-token-plan-sgp/mimo-v2.6-pro          # decisiones de arquitectura
+  # --- visión (clips): mimo con images=yes, explícito, nada heredado ---
+  vision: xiaomi-token-plan-sgp/mimo-v2.6-pro:high

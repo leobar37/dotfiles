@@ -31,7 +31,7 @@ function help(): void {
   console.log(`uso:
   bun src/cli.ts profiles                 perfiles + transportes + estado tailnet
   bun src/cli.ts inventory                lista compacta de dispositivos
-  bun src/cli.ts audit [perfil] [--via T] auditoría read-only (default: vultr-dev)
+  bun src/cli.ts audit [perfil|all] [--via T] auditoría read-only; "all" = solo máquinas de dev (default: vultr-dev)
   bun src/cli.ts sync <perfil|all> [mods] [--via T] [--dry-run]  empuja configs
   bun src/cli.ts models                   catálogo omp→opencode/pi (escribe catalog.json)
   bun src/cli.ts exec <perfil> [--via T] -- <cmd>  comando remoto vía ssh-runner
@@ -77,27 +77,30 @@ switch (cmd) {
   }
   case "audit": {
     const via = takeVia();
-    const device = await resolveDevice(args[0] ?? "vultr-dev");
-    const conns = connectionsFor(device, via);
-    if (conns.length === 0) throw new Error(`Perfil "${device.name}" sin transportes para via=${via ?? "default"}`);
     const local = await auditLocal();
     console.log(`-- local: ${local.skills} skills, ${local.factoryBroken} factory-symlinks rotos, ${local.opencodeAgents} opencode-agents`);
-    // auditRemote usa el primer transporte; el fallback se negocia aquí:
-    let target = conns[0].target;
-    let usedVia = conns[0].via;
-    if (conns.length > 1) {
-      const picked = await pickConnection(conns);
-      target = picked.target;
-      usedVia = picked.via;
+    const devices =
+      args[0] === "all"
+        ? (await loadDevices()).filter((d) => !d.local && d.dev !== false && d.status !== "blocked-timeout")
+        : [await resolveDevice(args[0] ?? "vultr-dev")];
+    for (const device of devices) {
+      try {
+        const conns = connectionsFor(device, via);
+        if (conns.length === 0) throw new Error(`Perfil "${device.name}" sin transportes para via=${via ?? "default"}`);
+        // auditRemote usa el primer transporte; el fallback se negocia aquí:
+        const picked = conns.length > 1 ? await pickConnection(conns) : conns[0];
+        const remote = await auditRemote(picked.target);
+        console.log(`-- ${device.name} via=${picked.via} (${remote.host}, ${remote.user}): ${remote.skillsCount} skills`);
+        for (const [mod, paths] of Object.entries(MODULE_PATHS)) {
+          const missing = paths.filter((p) => !remote.paths[p]);
+          console.log(`   ${missing.length === 0 ? "✓" : "≠"} ${mod}${missing.length ? `: falta ${missing.join(", ")}` : ""}`);
+        }
+        const missingTools = [...TOOLS].filter((t) => !remote.tools[t]);
+        console.log(`   tools faltantes: ${missingTools.join(", ") || "ninguna"}`);
+      } catch (e) {
+        console.log(`   FAIL ${device.name}: ${(e as Error).message}`);
+      }
     }
-    const remote = await auditRemote(target);
-    console.log(`-- ${device.name} via=${usedVia} (${remote.host}, ${remote.user}): ${remote.skillsCount} skills`);
-    for (const [mod, paths] of Object.entries(MODULE_PATHS)) {
-      const missing = paths.filter((p) => !remote.paths[p]);
-      console.log(`   ${missing.length === 0 ? "✓" : "≠"} ${mod}${missing.length ? `: falta ${missing.join(", ")}` : ""}`);
-    }
-    const missingTools = [...TOOLS].filter((t) => !remote.tools[t]);
-    console.log(`   tools faltantes: ${missingTools.join(", ") || "ninguna"}`);
     break;
   }
   case "sync": {
@@ -108,7 +111,7 @@ switch (cmd) {
 
     const targets =
       ref === "all"
-        ? (await loadDevices()).filter((d) => !d.local && d.status !== "blocked-timeout")
+        ? (await loadDevices()).filter((d) => !d.local && d.dev !== false && d.status !== "blocked-timeout")
         : [await resolveDevice(ref)];
     for (const device of targets) {
       try {
@@ -178,7 +181,7 @@ switch (cmd) {
     if (ref === "local") {
       await runLocal(cargs);
     } else if (ref === "all") {
-      const devices = (await loadDevices()).filter((d) => !d.local && d.status !== "blocked-timeout");
+      const devices = (await loadDevices()).filter((d) => !d.local && d.dev !== false && d.status !== "blocked-timeout");
       for (const device of devices) {
         console.log(`== ${device.name} ==`);
         try {

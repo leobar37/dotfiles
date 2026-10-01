@@ -1,0 +1,16 @@
+# Overlay de roles para ejecutar el plan ui-tari-avileo (worktree theelena/ui-tari-avileo).
+# Uso:
+#   .plans/ui-tari-avileo/orchestration/omp-session.sh
+#   (o directo: omp --config ~/code/dotfiles/omp/profiles/ui-tari-avileo.yml "...")
+# Verificado 2026-09-30: zai/glm-5.3 y zai/glm-5.3-flash existen en `omp models zai`.
+setupVersion: 2
+modelRoles:
+  # --- tareas fáciles / mecánicas: flash (barato y rápido) ---
+  commit: zai/glm-5.3-flash:high
+  smol: zai/glm-5.3-flash:high
+  tiny: zai/glm-5.3-flash:high
+  # --- trabajo pesado del plan: pro (P-001 read-only, contratos, validación) ---
+  default: zai/glm-5.3
+  slow: zai/glm-5.3
+  plan: zai/glm-5.3
+  advisor: zai/glm-5.3

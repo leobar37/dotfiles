@@ -24,7 +24,7 @@ export const MODULE_PATHS: Record<string, string[]> = {
   opencode: ["~/.config/opencode/opencode.json", "~/.config/opencode/agents", "~/.config/opencode/commands"],
   pi: ["~/.pi/agent/settings.json"],
   omp: ["~/.omp/agent/config.yml"],
-  shell: ["~/.zshenv"],
+  shell: ["~/.zshenv", "~/.zshrc"],
   climier: ["~/code/climier-stable/bin/climier.mjs", "~/.local/bin/climier", "~/.climier/projects"],
 };
 
@@ -237,11 +237,25 @@ export async function syncTo(target: string, modules: string[], opts: { dry?: bo
         await ensureDir(target, "~/.config/opencode", opts.dry);
         await rsyncTo(`${ROOT}/opencode/agents/`, target, "~/.config/opencode/agents/", { dry: opts.dry });
         await rsyncTo(`${ROOT}/opencode/commands/`, target, "~/.config/opencode/commands/", { dry: opts.dry });
-        console.log("  (opencode.json NO se copia: revisar opencode.json.safe a mano)");
+        // opencode.json es libre de secretos (apiKey de muse-code vive en auth.json): se empuja verbatim.
+        if (!opts.dry) {
+          const backup = await sshRun(target, `test -f ~/.config/opencode/opencode.json && cp ~/.config/opencode/opencode.json ~/.config/opencode/opencode.json.bak.$(date +%Y%m%d-%H%M%S) && echo backed-up || echo sin-previo`);
+          console.log(`  (opencode remoto: ${backup.stdout.trim()})`);
+        }
+        await rsyncTo(`${ROOT}/opencode/opencode.json`, target, "~/.config/opencode/opencode.json", { dry: opts.dry });
         break;
       case "pi":
         await ensureDir(target, "~/.pi/agent", opts.dry);
         await rsyncTo(`${ROOT}/pi/settings.json`, target, "~/.pi/agent/settings.json", { dry: opts.dry });
+        if (!opts.dry) {
+          // pi auto-instala packages con npm -g: el prefix debe ser del usuario,
+          // nunca /usr (EACCES). Guardia idempotente.
+          const guard = await sshRun(
+            target,
+            `command -v npm >/dev/null 2>&1 || { echo sin-npm; exit 0; }\ncase "$(npm config get prefix 2>/dev/null)" in "$HOME"/*) echo prefix-ok;; *) mkdir -p ~/.npm-global && npm config set prefix ~/.npm-global && echo prefix-reparado;; esac`,
+          );
+          console.log(`  (pi remoto: ${guard.stdout.trim()})`);
+        }
         console.log("  (auth.json NUNCA se sincroniza: re-autenticar en el VPS)");
         break;
       case "omp": {
@@ -257,10 +271,25 @@ export async function syncTo(target: string, modules: string[], opts: { dry?: bo
         console.log("  (broker.env y auth: manual por stdin, nunca via git)");
         break;
       }
-      case "shell":
+      case "shell": {
         await rsyncTo(`${ROOT}/shell/.zshenv`, target, "~/.zshenv", { dry: opts.dry });
-        console.log("  (.zshrc/.bashrc solo como .safe: aplicar a mano si se desea)");
+        // .zshrc.safe es libre de secretos (verificado en review): se empuja verbatim.
+        // Solo respalda el remoto si existe y difiere (syncs idempotentes no spamean .bak).
+        if (!opts.dry) {
+          const localHash = (await $`sha256sum ${ROOT}/shell/.zshrc.safe | cut -d' ' -f1`.text()).trim();
+          const remote = await sshRun(target, `sha256sum ~/.zshrc 2>/dev/null | cut -d' ' -f1 || echo sin-previo`);
+          const remoteHash = remote.stdout.trim();
+          if (remoteHash !== "sin-previo" && remoteHash !== localHash) {
+            const backup = await sshRun(target, `cp ~/.zshrc ~/.zshrc.bak.$(date +%Y%m%d-%H%M%S) && echo backed-up`);
+            console.log(`  (zshrc remoto: ${backup.stdout.trim()})`);
+          } else {
+            console.log(`  (zshrc remoto: ${remoteHash === "sin-previo" ? "sin-previo" : "sin-cambios"})`);
+          }
+        }
+        await rsyncTo(`${ROOT}/shell/.zshrc.safe`, target, "~/.zshrc", { dry: opts.dry });
+        console.log("  (.bashrc solo como .safe: aplicar a mano si se desea)");
         break;
+      }
       case "climier": {
         // Tool: espejo de climier-stable sin ui/.git (el VPS lo usa, no lo desarrolla).
         // Requiere bun en el remoto (install-tools.sh o ~/.bun ya instalado).

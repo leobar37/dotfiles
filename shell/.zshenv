@@ -11,5 +11,5 @@ fi
 # dotfiles: herramientas locales siempre en PATH (workstation + VPS)
 case ":$PATH:" in
   *":$HOME/.bun/bin:"*) ;;
-  *) export PATH="$HOME/.bun/bin:$HOME/.local/bin:$PATH" ;;
+  *) export PATH="$HOME/.bun/bin:$HOME/.local/bin:$HOME/.npm-global/bin:$PATH" ;;
 esac

@@ -7,3 +7,4 @@ auth.json
 *.db-wal
 *.sqlite*
 node_modules/
+docs/artifacts/

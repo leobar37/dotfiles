@@ -114,7 +114,7 @@ export PATH="$HOME/.local/bin:$PATH"
 # <<< Codex installer <<<
 
 # bun completions
-[ -s "/home/leobar37/.bun/_bun" ] && source "/home/leobar37/.bun/_bun"
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 
 # bun
 export BUN_INSTALL="$HOME/.bun"

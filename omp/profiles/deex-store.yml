@@ -1,0 +1,14 @@
+# Overlay por run para deex-store-launch; no inicia ninguna sesión.
+# Verificado 2026-09-25: provider en catalog.json y pares exactos mediante
+# omp models xiaomi-token-plan-sgp --json. Revalidar antes de lanzar.
+# Uso futuro autorizado: omp --config ~/code/dotfiles/omp/profiles/deex-store.yml ...
+setupVersion: 2
+modelRoles:
+  commit: xiaomi-token-plan-sgp/mimo-v2.6-flash:high
+  smol: xiaomi-token-plan-sgp/mimo-v2.6-flash:high
+  tiny: xiaomi-token-plan-sgp/mimo-v2.6-flash:high
+  default: xiaomi-token-plan-sgp/mimo-v2.6-pro
+  slow: xiaomi-token-plan-sgp/mimo-v2.6-pro
+  plan: xiaomi-token-plan-sgp/mimo-v2.6-pro
+  advisor: xiaomi-token-plan-sgp/mimo-v2.6-pro
+# Sin override vision: revisión visual independiente + aprobación humana obligatorias.
