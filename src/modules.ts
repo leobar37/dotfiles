@@ -324,6 +324,10 @@ export async function syncTo(target: string, modules: string[], opts: { dry?: bo
             `chmod +x ~/code/climier-stable/bin/climier.ts`,
         );
         await rsyncTo(`${home}/.climier/projects/`, target, "~/.climier/projects/", { dry: opts.dry });
+        // Nombres legibles para el board (parche local: <stateDir>/names.json).
+        if (await Bun.file(`${home}/.climier/names.json`).exists()) {
+          await rsyncTo(`${home}/.climier/names.json`, target, "~/.climier/names.json", { dry: opts.dry });
+        }
         // El binario 2.0.0 no lee estado legacy (v2-v5): migrar lo que quede en el remoto.
         const mig = await sshRun(
           target,

@@ -53,6 +53,8 @@ for m in $MODULES; do case "$m" in
     # Backend local + project_id propio de climier-stable (como en el workstation)
     printf '{\n  "version": 1,\n  "project_id": "b4e2c579bbb81669"\n}\n' | ssh "$TARGET" 'cat > ~/code/climier-stable/.climier.json'
     rsync -av ~/.climier/projects/ "$TARGET:~/.climier/projects/"
+    # Nombres legibles para el board (parche local: <stateDir>/names.json)
+    if [ -f ~/.climier/names.json ]; then rsync -av ~/.climier/names.json "$TARGET:~/.climier/names.json"; fi
     # El binario 2.0.0 no lee estado legacy (v2-v5): migrar lo que quede en el remoto
     ssh "$TARGET" 'export PATH="$HOME/.bun/bin:$PATH"; cd ~/code/climier-stable && "$HOME/code/climier-stable/bin/climier.ts" migrate --all >/dev/null 2>&1 && echo "  migrate: ok" || echo "  migrate: SKIP (revisar a mano)"'
     echo "NOTA: estado DAG workstation manda (canonical v1); requiere bun remoto"
