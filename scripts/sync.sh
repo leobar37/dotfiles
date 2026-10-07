@@ -45,10 +45,17 @@ for m in $MODULES; do case "$m" in
     ;;
   climier)
     ssh "$TARGET" 'mkdir -p ~/code ~/.local/bin ~/.climier ~/.climier/projects'
-    rsync -av --delete --exclude 'ui/' --exclude '.git/' --exclude 'node_modules/' ~/code/climier-stable/ "$TARGET:~/code/climier-stable/"
-    printf '#!/bin/sh\nexport PATH="$HOME/.bun/bin:$PATH"\nexec "$HOME/code/climier-stable/bin/climier.mjs" "$@"\n' | ssh "$TARGET" 'cat > ~/.local/bin/climier && chmod +x ~/.local/bin/climier'
+    # Base 2.0.0 (rama local climier-2.0.0 en ~/code/climier) → dir estable remoto.
+    # Se excluye .climier.json: el del workstation apunta a un backend remote y
+    # bloquearía `migrate`/dispatch local en el remoto.
+    rsync -av --delete --exclude '.git/' --exclude 'node_modules/' --exclude 'web/' --exclude '.plans/' --exclude '.climier.json' ~/code/climier/ "$TARGET:~/code/climier-stable/"
+    printf '#!/bin/sh\nexport PATH="$HOME/.bun/bin:$PATH"\nexec "$HOME/code/climier-stable/bin/climier.ts" "$@"\n' | ssh "$TARGET" 'cat > ~/.local/bin/climier && chmod +x ~/.local/bin/climier'
+    # Backend local + project_id propio de climier-stable (como en el workstation)
+    printf '{\n  "version": 1,\n  "project_id": "b4e2c579bbb81669"\n}\n' | ssh "$TARGET" 'cat > ~/code/climier-stable/.climier.json'
     rsync -av ~/.climier/projects/ "$TARGET:~/.climier/projects/"
-    echo "NOTA: estado DAG workstation manda; requiere bun remoto"
+    # El binario 2.0.0 no lee estado legacy (v2-v5): migrar lo que quede en el remoto
+    ssh "$TARGET" 'export PATH="$HOME/.bun/bin:$PATH"; cd ~/code/climier-stable && "$HOME/code/climier-stable/bin/climier.ts" migrate --all >/dev/null 2>&1 && echo "  migrate: ok" || echo "  migrate: SKIP (revisar a mano)"'
+    echo "NOTA: estado DAG workstation manda (canonical v1); requiere bun remoto"
     ;;
 esac; done
 echo "OK sync $TARGET"

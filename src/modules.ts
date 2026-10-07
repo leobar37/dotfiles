@@ -297,25 +297,39 @@ export async function syncTo(target: string, modules: string[], opts: { dry?: bo
         break;
       }
       case "climier": {
-        // Tool: espejo de climier-stable sin ui/.git (el VPS lo usa, no lo desarrolla).
+        // Tool: espejo del árbol 2.0.0 (rama local climier-2.0.0) sin .git/node_modules.
         // Requiere bun en el remoto (install-tools.sh o ~/.bun ya instalado).
         const home = process.env.HOME ?? "";
         if (opts.dry) {
-          console.log(`  (dry) mkdirs + rsync climier-stable (sin ui/.git) → ~/code/`);
-          console.log(`  (dry) wrapper ~/.local/bin/climier + estado ~/.climier/projects`);
+          console.log(`  (dry) mkdirs + rsync ~/code/climier → ~/code/climier-stable (sin .git/node_modules/web/.climier.json)`);
+          console.log(`  (dry) wrapper ~/.local/bin/climier (bin/climier.ts) + estado ~/.climier/projects`);
+          console.log(`  (dry) migrate --all remoto (estado legacy → canonical v1)`);
           break;
         }
         await ensureDir(target, "~/code/climier-stable", opts.dry);
         await ensureDir(target, "~/.local/bin", opts.dry);
         await ensureDir(target, "~/.climier/projects", opts.dry);
-        await rsyncTo(`${home}/code/climier-stable/`, target, "~/code/climier-stable/", {
+        await rsyncTo(`${home}/code/climier/`, target, "~/code/climier-stable/", {
           del: true,
           dry: opts.dry,
-          excludes: ["ui/", ".git/", "node_modules/"],
+          excludes: [".git/", "node_modules/", "web/", ".plans/", ".climier.json"],
         });
-        const wrapper = `#!/bin/sh\nexport PATH="$HOME/.bun/bin:$PATH"\nexec "$HOME/code/climier-stable/bin/climier.mjs" "$@"\n`;
-        await sshRun(target, `cat > ~/.local/bin/climier <<'WRAP'\n${wrapper}WRAP\nchmod +x ~/.local/bin/climier`);
+        const wrapper = `#!/bin/sh\nexport PATH="$HOME/.bun/bin:$PATH"\nexec "$HOME/code/climier-stable/bin/climier.ts" "$@"\n`;
+        await sshRun(
+          target,
+          `cat > ~/.local/bin/climier <<'WRAP'\n${wrapper}WRAP\nchmod +x ~/.local/bin/climier\n` +
+            // Backend local en el espejo: el .climier.json del workstation apunta a un
+            // backend remote y bloquearía dispatch/migrate en el remoto.
+            `cat > ~/code/climier-stable/.climier.json <<'META'\n{\n  "version": 1,\n  "project_id": "b4e2c579bbb81669"\n}\nMETA\n` +
+            `chmod +x ~/code/climier-stable/bin/climier.ts`,
+        );
         await rsyncTo(`${home}/.climier/projects/`, target, "~/.climier/projects/", { dry: opts.dry });
+        // El binario 2.0.0 no lee estado legacy (v2-v5): migrar lo que quede en el remoto.
+        const mig = await sshRun(
+          target,
+          `cd ~/code/climier-stable && "$HOME/code/climier-stable/bin/climier.ts" migrate --all >/dev/null 2>&1 && echo ok || echo SKIP`,
+        );
+        console.log(`  (migrate remoto: ${mig.stdout.trim() || "sin salida"})`);
         console.log("  (estado DAG: workstation manda; ediciones remotas se pisan)");
         break;
       }
