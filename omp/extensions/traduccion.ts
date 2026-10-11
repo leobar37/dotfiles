@@ -59,7 +59,7 @@ export interface LogEntry {
 type CompleteSimple = (
   model: unknown,
   context: { systemPrompt: string[]; messages: { role: "user"; content: string; timestamp: number }[] },
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; apiKey?: string },
 ) => Promise<{ content: unknown }>;
 
 interface UIContext {
@@ -69,6 +69,7 @@ interface UIContext {
     setWidget?: (key: string, lines: string[] | undefined, options?: { placement?: string }) => void;
   };
   models?: { resolve?: (spec: string) => unknown };
+  modelRegistry?: unknown;
   setTimeout?: (fn: () => void, ms: number) => unknown;
 }
 
@@ -227,14 +228,62 @@ async function loadCompleteSimple(): Promise<CompleteSimple> {
   throw new Error("pi-ai does not expose completeSimple");
 }
 
+/** Fallback AuthStorage bound to ~/.omp/agent/agent.db (see resolveApiKey). */
+let fallbackAuthStorage: { getApiKey: (provider: string) => Promise<string | undefined> } | undefined;
+
+/**
+ * API key for a provider. Prefers the live session registry's AuthStorage
+ * (omp's own instance: OAuth refresh via its broker, runtime overrides) and
+ * falls back to opening the credential db directly. completeSimple bypasses
+ * omp's credential pipeline, so the key must be resolved here.
+ */
+async function resolveApiKey(ctx: UIContext, provider: string): Promise<string | undefined> {
+  const registry = ctx.modelRegistry as
+    | { authStorage?: { getApiKey: (p: string) => Promise<string | undefined> } }
+    | undefined;
+  const live = await registry?.authStorage?.getApiKey(provider);
+  if (live) return live;
+  fallbackAuthStorage ??= await openFallbackAuthStorage();
+  return fallbackAuthStorage?.getApiKey(provider);
+}
+
+async function openFallbackAuthStorage(): Promise<{ getApiKey: (p: string) => Promise<string | undefined> } | undefined> {
+  try {
+    const mod: unknown = await import("@oh-my-pi/pi-ai");
+    if (typeof mod === "object" && mod !== null && "AuthStorage" in mod) {
+      const AuthStorage = (mod as Record<string, unknown>).AuthStorage;
+      if (typeof AuthStorage === "function") {
+        return await (AuthStorage as {
+          create: (dbPath: string) => Promise<{ getApiKey: (p: string) => Promise<string | undefined> }>;
+        }).create(`${process.env.HOME ?? ""}/.omp/agent/agent.db`);
+      }
+    }
+  } catch {
+    /* no fallback: the missing-key error below reports it */
+  }
+  return undefined;
+}
+
+/** Provider id of a resolved model ("openai-codex/gpt-6-luna" → "openai-codex"). */
+function modelProvider(model: object): string {
+  if ("provider" in model && typeof model.provider === "string" && model.provider) return model.provider;
+  if ("id" in model && typeof model.id === "string" && model.id.includes("/")) return model.id.split("/")[0];
+  return "";
+}
+
 /** Calls @tiny with system+user only — no session context, no tools. */
 async function callTiny(ctx: UIContext, system: string, user: string): Promise<{ text: string; model: string }> {
   const model = ctx.models?.resolve?.(MODEL_ROLE);
-  if (!model) throw new Error(`could not resolve ${MODEL_ROLE} (check modelRoles in config.yml)`);
+  if (!model || typeof model !== "object") {
+    throw new Error(`could not resolve ${MODEL_ROLE} (check modelRoles in config.yml)`);
+  }
   const completeSimple = await loadCompleteSimple();
   let modelId = MODEL_ROLE;
-  if (typeof model === "object" && model !== null && "id" in model && typeof model.id === "string") {
-    modelId = model.id;
+  if ("id" in model && typeof model.id === "string") modelId = model.id;
+  const provider = modelProvider(model);
+  const apiKey = provider ? await resolveApiKey(ctx, provider) : undefined;
+  if (!apiKey) {
+    throw new Error(`no credential for provider "${provider}" — run omp /login for it`);
   }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
@@ -242,7 +291,7 @@ async function callTiny(ctx: UIContext, system: string, user: string): Promise<{
     const reply = await completeSimple(
       model,
       { systemPrompt: [system], messages: [{ role: "user", content: user, timestamp: Date.now() }] },
-      { signal: ctrl.signal },
+      { signal: ctrl.signal, apiKey },
     );
     return { text: extractText(reply?.content).trim(), model: modelId };
   } finally {
