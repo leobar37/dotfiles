@@ -1,15 +1,17 @@
-// traduccion.ts — prompts en inglés para el agente, español para mí.
+// traduccion.ts — English prompts for the agent, Spanish for me.
 //
-// Comandos:
-//   /tr-send [texto]   Mejora el texto (traduce ES→EN o corrige EN) vía @tiny
-//                      y LO ENVÍA como prompt. Fuente: args → draft del editor.
-//   /tr-explain        Detalle del ÚLTIMO prompt enviado: traducción,
-//                      correcciones y vocabulario (widget bajo el editor).
-//   /tr-log [n]        Últimas n entradas del log (default 8).
+// Commands:
+//   /tr-send [text]   Improves the text (translates ES→EN or corrects EN)
+//                      via @tiny and SENDS it as the prompt. Source: args →
+//                      editor draft.
+//   /tr-explain       Detail for the LAST submitted prompt: translation,
+//                      corrections and vocabulary (widget below the editor).
+//   /tr-log [n]       Last n log entries (default 8).
 //
-// Principios: nada corre solo (el flujo normal nunca se toca), fail-open
-// (si @tiny falla, /tr-send NO envía nada: avisa y el original queda en tu
-// poder), y todo queda en ~/.local/state/omp/traduccion.jsonl para estudiar.
+// Principles: nothing runs on its own (the normal flow is never touched),
+// fail-closed (if @tiny fails, /tr-send sends NOTHING: it reports and the
+// original stays yours), and everything is logged to
+// ~/.local/state/omp/traduccion.jsonl for studying.
 
 import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
@@ -20,7 +22,7 @@ const TIMEOUT_MS = 25_000;
 const WIDGET_KEY = "traduccion";
 const WIDGET_TTL_MS = 90_000;
 
-/** Trunca con elipsis UTF-8 — un solo formato para todas las líneas del widget. */
+/** Clips text with a UTF-8 ellipsis — one format for every widget line. */
 const clip = (s: string, max: number): string => (s.length > max ? `${s.slice(0, max - 1)}…` : s);
 
 export interface Correction {
@@ -53,7 +55,7 @@ export interface LogEntry {
   error?: string;
 }
 
-/** Firma mínima de pi-ai.completeSimple que esta extensión necesita. */
+/** Minimal pi-ai.completeSimple signature this extension needs. */
 type CompleteSimple = (
   model: unknown,
   context: { systemPrompt: string[]; messages: { role: "user"; content: string; timestamp: number }[] },
@@ -79,7 +81,7 @@ interface TraduccionAPI {
   on?: (event: "input", handler: (event: { text: string; source: string }) => Promise<unknown> | unknown) => void;
 }
 
-/** Último prompt no-comando capturado pasivamente (para /tr-explain). */
+/** Last non-command prompt captured passively (for /tr-explain). */
 let lastPrompt: { text: string; ts: number } | undefined;
 
 const SEND_SYSTEM = [
@@ -94,14 +96,14 @@ const EXPLAIN_SYSTEM = [
   "You are an English teacher for a Spanish-speaking software developer.",
   "Given their prompt, return ONE JSON object and nothing else with fields:",
   '{"detected":"es|en","result":"the prompt in correct technical English",',
-  '"corrections":[{"from":"...","to":"...","why":"grammar|spelling|usage: breve"}],',
-  '"vocab":[{"es":"...","en":"..."}],"note":"una línea de consejo"}',
+  '"corrections":[{"from":"...","to":"...","why":"grammar|spelling|usage: brief"}],',
+  '"vocab":[{"es":"...","en":"..."}],"note":"one line of advice in Spanish"}',
   "Corrections: real mistakes only (grammar, spelling, false friends), max 5.",
   "Vocab: max 5 ES→EN pairs worth remembering from this prompt.",
   "If input is Spanish: corrections stay empty; vocab carries the learning.",
 ].join(" ");
 
-/** Guard: bloque {type:"text", text:string} de un AssistantMessage. */
+/** Guard: {type:"text", text:string} block of an AssistantMessage. */
 function isTextBlock(block: unknown): block is { type: "text"; text: string } {
   return (
     typeof block === "object" &&
@@ -129,14 +131,14 @@ const isVocabPair = (v: unknown): v is VocabPair =>
   "en" in v &&
   typeof v.en === "string";
 
-/** Extrae el texto plano de un AssistantMessage (bloques type text). */
+/** Extracts the plain text of an AssistantMessage (type text blocks). */
 export function extractText(content: unknown): string {
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return "";
   return content.filter(isTextBlock).map((b) => b.text).join("");
 }
 
-/** Primera llave balanceada {...} del texto → JSON.parse defensivo. */
+/** First balanced {...} in the text → defensive JSON.parse. */
 export function parseDetail(raw: string): ExplainDetail {
   const fallback = (text: string): ExplainDetail => ({
     detected: "?",
@@ -157,7 +159,7 @@ export function parseDetail(raw: string): ExplainDetail {
         try {
           const parsed: unknown = JSON.parse(raw.slice(start, i + 1));
           if (typeof parsed !== "object" || parsed === null) return fallback(raw.trim());
-          // JSON.parse exitoso + typeof object: shape mínima se valida abajo campo a campo.
+          // JSON.parse succeeded + typeof object: minimal shape validated field by field below.
           o = parsed as Record<string, unknown>;
         } catch {
           return fallback(raw.trim());
@@ -175,7 +177,7 @@ export function parseDetail(raw: string): ExplainDetail {
   return fallback(raw.trim());
 }
 
-/** Fuente de texto para /tr-send: args explícitos → draft del editor. */
+/** Text source for /tr-send: explicit args → editor draft. */
 export function pickSource(
   args: string,
   editorText: string | undefined,
@@ -191,7 +193,7 @@ export function renderSendLines(original: string, english: string, ms: number, m
   return [
     `🇪🇸 ${clip(original, 70)}`,
     `🇬🇧 ${clip(english, 70)}`,
-    `✉ enviado (${ms}ms · ${model})`,
+    `✉ sent (${ms}ms · ${model})`,
   ];
 }
 
@@ -211,24 +213,24 @@ export function renderExplainLines(original: string, d: ExplainDetail): string[]
 export const logLine = (entry: LogEntry): string => JSON.stringify(entry);
 
 /**
- * Import en runtime de pi-ai: el paquete solo existe dentro del proceso omp
- * (instalación global de omp), no en este repo — un import estático rompería
- * `bun test` aquí. Excepción de plataforma, specifier literal consciente.
+ * Runtime import of pi-ai: the package only exists inside the omp process
+ * (omp's global install), not in this repo — a static import would break
+ * `bun test` here. Deliberate platform exception for the literal specifier.
  */
 async function loadCompleteSimple(): Promise<CompleteSimple> {
   const mod: unknown = await import("@oh-my-pi/pi-ai");
-  // Guard + cast a nombre: la firma real es más amplia; solo usamos este subset.
+  // Guard + cast to a name: the real signature is wider; we only use this subset.
   if (typeof mod === "object" && mod !== null && "completeSimple" in mod) {
     const fn = (mod as Record<string, unknown>).completeSimple;
     if (typeof fn === "function") return fn as CompleteSimple;
   }
-  throw new Error("pi-ai no expone completeSimple");
+  throw new Error("pi-ai does not expose completeSimple");
 }
 
-/** Llama a @tiny con system+user, sin contexto de sesión ni tools. */
+/** Calls @tiny with system+user only — no session context, no tools. */
 async function callTiny(ctx: UIContext, system: string, user: string): Promise<{ text: string; model: string }> {
   const model = ctx.models?.resolve?.(MODEL_ROLE);
-  if (!model) throw new Error(`no se pudo resolver ${MODEL_ROLE} (revisa modelRoles en config.yml)`);
+  if (!model) throw new Error(`could not resolve ${MODEL_ROLE} (check modelRoles in config.yml)`);
   const completeSimple = await loadCompleteSimple();
   let modelId = MODEL_ROLE;
   if (typeof model === "object" && model !== null && "id" in model && typeof model.id === "string") {
@@ -253,7 +255,7 @@ function appendLog(entry: LogEntry): void {
     mkdirSync(dirname(LOG_PATH), { recursive: true });
     appendFileSync(LOG_PATH, `${logLine(entry)}\n`);
   } catch {
-    /* log best-effort: nunca rompe el comando */
+    /* best-effort log: never breaks the command */
   }
 }
 
@@ -271,47 +273,47 @@ function showWidget(ctx: UIContext, lines: string[]): void {
 }
 
 export default function traduccion(pi: TraduccionAPI): void {
-  // Captura pasiva del último prompt real (no comandos). SIN return: cero
-  // interferencia con el dispatch normal — nunca modifica ni bloquea nada.
+  // Passive capture of the last real prompt (not commands). NO return value:
+  // zero interference with normal dispatch — never modifies or blocks anything.
   pi.on?.("input", (event) => {
     const t = event.text.trim();
     if (t && !t.startsWith("/")) lastPrompt = { text: t, ts: Date.now() };
   });
 
   pi.registerCommand("tr-send", {
-    description: "Traduce/corrige el prompt al inglés vía @tiny y lo envía. Args: texto (default: draft del editor)",
+    description: "Translate/fix the prompt into English via @tiny and send it. Args: text (default: editor draft)",
     handler: async (args, ctx) => {
       const src = pickSource(args, ctx.ui.getEditorText?.());
       if (!src) {
-        ctx.ui.notify("tr-send: escribe el texto después del comando o deja un draft en el editor", "warn");
+        ctx.ui.notify("tr-send: type the text after the command or leave a draft in the editor", "warn");
         return;
       }
-      ctx.ui.notify(`tr-send: mejorando con ${MODEL_ROLE}…`, "info");
+      ctx.ui.notify(`tr-send: improving with ${MODEL_ROLE}…`, "info");
       const t0 = Date.now();
       try {
         const { text: en, model } = await callTiny(ctx, SEND_SYSTEM, src.text);
-        if (!en) throw new Error("respuesta vacía de @tiny");
+        if (!en) throw new Error("empty response from @tiny");
         const ms = Date.now() - t0;
         pi.sendUserMessage?.(en);
         showWidget(ctx, renderSendLines(src.text, en, ms, model));
         appendLog({ ts: Date.now(), kind: "send", source: src.source, original: src.text, result: en, ms, model });
       } catch (err) {
-        // Contrato: mejorar Y enviar. Sin mejora no hay envío silencioso en ES.
+        // Contract: improve AND send. No improvement, no silent Spanish send.
         const msg = err instanceof Error ? err.message : String(err);
-        ctx.ui.notify(`tr-send: NO se envió nada (${msg}); envía el original a mano si quieres`, "error");
+        ctx.ui.notify(`tr-send: NOTHING was sent (${msg}); send the original yourself if you want`, "error");
         appendLog({ ts: Date.now(), kind: "error", source: src.source, original: src.text, error: msg, ms: Date.now() - t0 });
       }
     },
   });
 
   pi.registerCommand("tr-explain", {
-    description: "Detalle del último prompt: traducción, correcciones y vocabulario (widget bajo el editor)",
+    description: "Detail for the last prompt: translation, corrections and vocabulary (widget below the editor)",
     handler: async (_args, ctx) => {
       if (!lastPrompt) {
-        ctx.ui.notify("tr-explain: aún no hay prompt previo en esta sesión", "warn");
+        ctx.ui.notify("tr-explain: no previous prompt in this session yet", "warn");
         return;
       }
-      ctx.ui.notify(`tr-explain: analizando con ${MODEL_ROLE}…`, "info");
+      ctx.ui.notify(`tr-explain: analyzing with ${MODEL_ROLE}…`, "info");
       const t0 = Date.now();
       try {
         const { text: raw, model } = await callTiny(ctx, EXPLAIN_SYSTEM, lastPrompt.text);
@@ -324,27 +326,27 @@ export default function traduccion(pi: TraduccionAPI): void {
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        ctx.ui.notify(`tr-explain: falló (${msg})`, "error");
+        ctx.ui.notify(`tr-explain: failed (${msg})`, "error");
         appendLog({ ts: Date.now(), kind: "error", source: "last", original: lastPrompt.text, error: msg, ms: Date.now() - t0 });
       }
     },
   });
 
   pi.registerCommand("tr-log", {
-    description: "Últimas entradas de traduccion.jsonl. Args: [n] (default 8)",
+    description: "Last entries of traduccion.jsonl. Args: [n] (default 8)",
     handler: (args, ctx) => {
       const n = Math.max(1, Math.min(10, Number.parseInt(args.trim(), 10) || 8));
       const rows = readLogTail(n);
       if (rows.length === 0) {
-        ctx.ui.notify(`tr-log: ${LOG_PATH} vacío o inexistente`, "warn");
+        ctx.ui.notify(`tr-log: ${LOG_PATH} empty or missing`, "warn");
         return;
       }
       const lines = rows.map((r) => {
         let e: LogEntry;
         try {
           const parsed: unknown = JSON.parse(r);
-          if (typeof parsed !== "object" || parsed === null) throw new Error("no-object");
-          e = parsed as LogEntry; // boundary: línea escrita por appendLog, forma conocida
+          if (typeof parsed !== "object" || parsed === null) throw new Error("not an object");
+          e = parsed as LogEntry; // boundary: line written by appendLog, known shape
         } catch {
           return clip(r, 76);
         }
