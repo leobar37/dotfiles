@@ -64,6 +64,39 @@ a missing legacy role only from an exact saved-model entry in unchanged YAML.
 Legacy request hashes remain valid for commands without configuration. Missing
 legacy lifecycle timestamps/text stay unknown; process stop times are not task ends.
 
+### Freeze the installed runtime and isolate experiments (local only)
+
+```bash
+bash omp/worker-runtime/scripts/setup-channels.sh
+workerctl-beta --help
+workerctl-experimental list
+```
+
+This copies **installed** code, not this checkout, into a create-only, hash-verified
+`~/.local/share/omp-worker-runtime/releases/<version>-<sha256>` release and an
+independent `~/.local/share/omp-worker-runtime-experimental` directory. Releases
+are immutable by convention (not filesystem-enforced). The original installed
+directory remains untouched for active process paths. Existing launchers are
+backed up under `~/.local/share/omp-worker-runtime/backups/` before replacement;
+`channels.json` records the initial file hashes. Repeating setup verifies that
+same installation; it never refreshes changed experimental code or repins drift.
+Symlinks, unrelated/modified launchers, and unrecognized nonempty experimental
+installations/state are refused. Python 3 is required.
+
+`workerctl-beta` defaults to the frozen release, retaining `OMP_WORKER_RUNTIME`
+as an explicit pin bypass and the existing stable state default (including
+`XDG_STATE_HOME` behavior). `workerctl-experimental` ignores `OMP_WORKER_RUNTIME`;
+it accepts only `OMP_EXPERIMENTAL_RUNTIME` for its code override and defaults
+`OMP_WORKER_HOME` to `~/.local/state/omp-workers-experimental`, regardless of
+`XDG_STATE_HOME`. Explicit `OMP_EXPERIMENTAL_RUNTIME` or `OMP_WORKER_HOME` overrides
+can bypass isolation: do not point them at stable code/state. The unchanged
+runtime's help still describes its beta fallback; the experimental wrapper sets
+the actual default state path. This is launcher/copy isolation, not a sandbox or
+an architecture redesign: plan paths, credentials, tools and OMP remain shared.
+No workers, services, migrations, upgrades or remote sync are started. Do not run
+the ordinary installer/deployer to update these channels: it replaces the beta
+launcher and is a separate, explicitly authorized operation.
+
 Prepared plans require goal.md, phase-index.md, phases/, and orchestration/models.yml.
 The generic runtime requires tasks.md only when no orchestration/climier-plan.json
 exists. If a mapping exists, even if damaged, it selects Climier and fails closed
