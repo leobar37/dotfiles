@@ -1,0 +1,12 @@
+# Per-run overlay for the Knowledge coordinator; no sessions launched by this file.
+# Exact model IDs verified with omp models <provider> --json.
+# Launch coordinator with --no-prewalk; use the separate worker overlay for all workers.
+setupVersion: 2
+modelRoles:
+  default: openai-codex/gpt-6.1-sol:high
+  slow: openai-codex/gpt-6.1-sol:high
+  plan: openai-codex/gpt-6.1-sol:high
+  advisor: openai-codex/gpt-6.1-sol:high
+  smol: zai/glm-5.3-flash:high
+  tiny: zai/glm-5.3-flash:high
+  commit: zai/glm-5.3-flash:high

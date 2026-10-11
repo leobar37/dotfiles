@@ -11,3 +11,6 @@ docs/artifacts/
 
 # config local con apiKey embebida
 opencode/opencode.json
+
+# Independent repository checkout
+/artifacts-cli/

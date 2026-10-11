@@ -28,7 +28,7 @@ export const MODULE_PATHS: Record<string, string[]> = {
   climier: ["~/code/climier-stable/bin/climier.mjs", "~/.local/bin/climier", "~/.climier/projects"],
 };
 
-export const TOOLS = ["git", "bun", "omp", "herdr", "gh", "zsh", "nvim", "climier"] as const;
+export const TOOLS = ["git", "bun", "omp", "herdr", "gh", "zsh", "nvim", "climier", "pi"] as const;
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
 const REMOTE_SCRIPT = `

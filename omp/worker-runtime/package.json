@@ -1,0 +1,18 @@
+{
+  "name": "omp-worker-runtime-beta",
+  "version": "0.3.0-beta.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test tests",
+    "typecheck": "tsc -p tsconfig.json",
+    "smoke:omp": "bun scripts/smoke-omp.ts"
+  },
+  "engines": {
+    "bun": ">=1.3.14"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "typescript": "^7.0.2"
+  }
+}

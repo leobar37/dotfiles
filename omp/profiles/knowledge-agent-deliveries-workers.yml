@@ -1,0 +1,12 @@
+# Per-run overlay for Knowledge implementation workers; not an isolated auth profile.
+# All worker roles are pinned to the requested GLM-5.3-Flash, not GLM-5.3/FlashX.
+# No implicit escalation or fuzzy model substitution is allowed.
+setupVersion: 2
+modelRoles:
+  default: zai/glm-5.3-flash:high
+  slow: zai/glm-5.3-flash:high
+  plan: zai/glm-5.3-flash:high
+  advisor: zai/glm-5.3-flash:high
+  smol: zai/glm-5.3-flash:high
+  tiny: zai/glm-5.3-flash:high
+  commit: zai/glm-5.3-flash:high
