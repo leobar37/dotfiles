@@ -66,6 +66,8 @@ interface UIContext {
   ui: {
     notify: (message: string, type?: string) => void;
     getEditorText?: () => string;
+    setEditorText?: (text: string) => void;
+    editor?: (title: string, prefill?: string) => Promise<string | undefined>;
     setWidget?: (key: string, lines: string[] | undefined, options?: { placement?: string }) => void;
   };
   models?: { resolve?: (spec: string) => unknown };
@@ -211,6 +213,53 @@ export function renderExplainLines(original: string, d: ExplainDetail): string[]
   return lines.slice(0, 10);
 }
 
+/** Full-detail text for the /tr-explain dialog — no clipping, scrolls. */
+export function renderExplainText(original: string, d: ExplainDetail): string {
+  const lines: string[] = [
+    `Detected : ${d.detected}`,
+    "",
+    "Original:",
+    ...wrap(original, 76).map((l) => `  ${l}`),
+    "",
+    "English:",
+    ...wrap(d.result, 76).map((l) => `  ${l}`),
+  ];
+  if (d.corrections.length > 0) {
+    lines.push("", "Corrections:");
+    for (const c of d.corrections) {
+      lines.push(`  • ${c.from} → ${c.to}${c.why ? ` (${c.why})` : ""}`);
+    }
+  }
+  if (d.vocab.length > 0) {
+    lines.push("", "Vocabulary:");
+    for (const v of d.vocab) {
+      lines.push(`  • ${v.es} = ${v.en}`);
+    }
+  }
+  if (d.note) lines.push("", `💡 ${d.note}`);
+  lines.push("", "(Esc to close — edits + Enter load the text into the composer)");
+  return lines.join("\n");
+}
+
+/** Simple word wrap for dialog text. */
+function wrap(text: string, max: number): string[] {
+  if (!text) return ["(empty)"];
+  const out: string[] = [];
+  for (const paragraph of text.split("\n")) {
+    let line = "";
+    for (const word of paragraph.split(/\s+/)) {
+      if (line && `${line} ${word}`.length > max) {
+        out.push(line);
+        line = word;
+      } else {
+        line = line ? `${line} ${word}` : word;
+      }
+    }
+    out.push(line);
+  }
+  return out;
+}
+
 export const logLine = (entry: LogEntry): string => JSON.stringify(entry);
 
 /**
@@ -321,6 +370,22 @@ function showWidget(ctx: UIContext, lines: string[]): void {
   ctx.setTimeout?.(() => ctx.ui.setWidget?.(WIDGET_KEY, undefined), WIDGET_TTL_MS);
 }
 
+/**
+ * Full-screen scrollable dialog via ui.editor; falls back to the editor
+ * widget in hosts without dialogs (RPC/headless). If the user edits the text
+ * and presses Enter, the edited text lands in the composer (Esc = just close).
+ */
+async function showDetail(ctx: UIContext, fullText: string, widgetLines: string[]): Promise<void> {
+  if (typeof ctx.ui.editor === "function") {
+    const edited = await ctx.ui.editor("traduccion", fullText);
+    if (typeof edited === "string" && edited.trim() && edited.trim() !== fullText.trim()) {
+      ctx.ui.setEditorText?.(edited.trim());
+    }
+    return;
+  }
+  showWidget(ctx, widgetLines);
+}
+
 export default function traduccion(pi: TraduccionAPI): void {
   // Passive capture of the last real prompt (not commands). NO return value:
   // zero interference with normal dispatch — never modifies or blocks anything.
@@ -356,7 +421,7 @@ export default function traduccion(pi: TraduccionAPI): void {
   });
 
   pi.registerCommand("tr-explain", {
-    description: "Detail for the last prompt: translation, corrections and vocabulary (widget below the editor)",
+    description: "Detail for the last prompt: translation, corrections and vocabulary (full-screen dialog)",
     handler: async (_args, ctx) => {
       if (!lastPrompt) {
         ctx.ui.notify("tr-explain: no previous prompt in this session yet", "warn");
@@ -367,7 +432,7 @@ export default function traduccion(pi: TraduccionAPI): void {
       try {
         const { text: raw, model } = await callTiny(ctx, EXPLAIN_SYSTEM, lastPrompt.text);
         const detail = parseDetail(raw);
-        showWidget(ctx, renderExplainLines(lastPrompt.text, detail));
+        await showDetail(ctx, renderExplainText(lastPrompt.text, detail), renderExplainLines(lastPrompt.text, detail));
         appendLog({
           ts: Date.now(), kind: "explain", source: "last", original: lastPrompt.text,
           result: detail.result, detected: detail.detected, corrections: detail.corrections,
@@ -382,9 +447,9 @@ export default function traduccion(pi: TraduccionAPI): void {
   });
 
   pi.registerCommand("tr-log", {
-    description: "Last entries of traduccion.jsonl. Args: [n] (default 8)",
+    description: "Last entries of traduccion.jsonl (full-screen dialog). Args: [n] (default 8)",
     handler: (args, ctx) => {
-      const n = Math.max(1, Math.min(10, Number.parseInt(args.trim(), 10) || 8));
+      const n = Math.max(1, Math.min(20, Number.parseInt(args.trim(), 10) || 8));
       const rows = readLogTail(n);
       if (rows.length === 0) {
         ctx.ui.notify(`tr-log: ${LOG_PATH} empty or missing`, "warn");
@@ -403,7 +468,7 @@ export default function traduccion(pi: TraduccionAPI): void {
         if (e.kind === "error") return `${when} ✕ ${e.error ?? "?"}`;
         return `${when} ${e.kind === "send" ? "✉" : "🗣"} ${clip(e.original ?? "", 28)} → ${clip(e.result ?? "", 34)}`;
       });
-      showWidget(ctx, lines);
+      showDetail(ctx, lines.join("\n"), lines);
     },
   });
 }

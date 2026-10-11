@@ -8,6 +8,7 @@ import {
   parseDetail,
   pickSource,
   renderExplainLines,
+  renderExplainText,
   renderSendLines,
   type LogEntry,
 } from "../extensions/traduccion.ts";
@@ -81,6 +82,30 @@ describe("parseDetail", () => {
     expect(d.result).toBe("");
     expect(d.corrections).toEqual([{ from: "bueno", to: "good" }]);
     expect(d.vocab).toEqual([]);
+  });
+});
+
+describe("renderExplainText", () => {
+  test("full detail, no clipping, all sections", () => {
+    const text = renderExplainText("arregla el bug del parser en src/cli.ts", {
+      detected: "es",
+      result: "Fix the parser bug in src/cli.ts",
+      corrections: [],
+      vocab: [{ es: "arreglar", en: "fix" }],
+      note: "buen trabajo",
+    });
+    expect(text).toContain("Detected : es");
+    expect(text).toContain("arregla el bug del parser en src/cli.ts");
+    expect(text).toContain("Fix the parser bug in src/cli.ts");
+    expect(text).toContain("• arreglar = fix");
+    expect(text).toContain("💡 buen trabajo");
+    expect(text).toContain("Esc to close");
+  });
+  test("long original wraps without losing words", () => {
+    const long = Array.from({ length: 30 }, (_, i) => `palabra${i}`).join(" ");
+    const text = renderExplainText(long, { detected: "?", result: "", corrections: [], vocab: [], note: "" });
+    const body = text.split("\n").filter((l) => l.startsWith("  "));
+    expect(body.join(" ").replace(/\s+/g, " ")).toContain("palabra29");
   });
 });
 
