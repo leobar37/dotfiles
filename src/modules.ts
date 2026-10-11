@@ -25,7 +25,7 @@ export const MODULE_PATHS: Record<string, string[]> = {
   pi: ["~/.pi/agent/settings.json", "~/.pi/agent/extensions/herdr-tools.ts"],
   omp: ["~/.omp/agent/config.yml", "~/.omp/agent/extensions/herdr-tools.ts"],
   shell: ["~/.zshenv", "~/.zshrc"],
-  climier: ["~/code/climier-stable/bin/climier.mjs", "~/.local/bin/climier", "~/.climier/projects"],
+  climier: ["~/code/climier-stable/bin/climier.ts", "~/.local/bin/climier", "~/.climier/projects"],
 };
 
 export const TOOLS = ["git", "bun", "omp", "herdr", "gh", "zsh", "nvim", "climier", "pi"] as const;
